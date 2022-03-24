@@ -65,8 +65,10 @@ const FileWatcher = function FileWatcher(
    * @returns
    */
   this.setRecordAttendanceState = (line: string): boolean => {
+    console.log(line);
     if (line.match(expressions.RECORD_FINAL_TICK)?.length === 1) {
       this.isFinalTick = true;
+      console.log('final');
       return true;
     }
     if (line.match(expressions.START_RECORD_ATTENDANCE)?.length === 1) {
@@ -78,7 +80,6 @@ const FileWatcher = function FileWatcher(
     if (line.match(expressions.END_RECORD_ATTENDANCE)?.length === 1) {
       console.info('Attendance recording ended...');
       this.isRecording = false;
-      this.isFinalTick = false;
       return false;
     }
 
@@ -138,6 +139,7 @@ const FileWatcher = function FileWatcher(
                   this.isFinalTick
                 );
               }
+              this.isFinalTick = false;
               cb('recorded tick', this.attendees);
             }
             this.attendees = [];
