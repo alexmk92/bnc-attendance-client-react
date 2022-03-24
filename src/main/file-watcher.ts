@@ -78,6 +78,7 @@ const FileWatcher = function FileWatcher(
     if (line.match(expressions.END_RECORD_ATTENDANCE)?.length === 1) {
       console.info('Attendance recording ended...');
       this.isRecording = false;
+      this.isFinalTick = false;
       return false;
     }
 
