@@ -1,22 +1,13 @@
-import { FC, useEffect, useState } from 'react';
+import { FC } from 'react';
+import { useGlobal } from 'reactn';
 
-interface HistoryLogProps {
-  lines: string[];
-}
-
-const HistoryLog: FC<HistoryLogProps> = ({ lines }) => {
-  const [renderLines, setRenderLines] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (lines.length > 0) {
-      setRenderLines(lines);
-    }
-  }, [lines]);
+const HistoryLog: FC = () => {
+  const [lines] = useGlobal('history');
 
   return (
     <div className="absolute max-h-48 w-full overflow-y-scroll bottom-0 left-0">
-      {renderLines.map((line, idx) => (
-        <p key={idx}>{line}</p>
+      {lines.map((line, idx) => (
+        <p key={`line-${idx}`}>{line}</p>
       ))}
     </div>
   );

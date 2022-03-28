@@ -1,6 +1,7 @@
 import { MemoryRouter as Router, Switch, Route } from 'react-router-dom';
 import 'tailwindcss/tailwind.css';
 import './App.css';
+import './set-global';
 import FileWatcher from './FileWatcher';
 import Raid from './Raid';
 

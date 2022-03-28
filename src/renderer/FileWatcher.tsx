@@ -1,3 +1,4 @@
+import { useGlobal } from 'reactn';
 import { FC, useEffect, useState } from 'react';
 import { RouteComponentProps, withRouter } from 'react-router';
 import { Link } from 'react-router-dom';
@@ -33,19 +34,26 @@ const extractFileInfo = (path: string) => {
 };
 
 type FileWatcherProps = RouteComponentProps<MockType, MockType, { raid: Raid }>;
+let lines: string[] = [];
 
 const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
   const [filePath, setFilePath] = useState<string>('');
   const [fileInfo, setFileInfo] = useState<FileInfo | undefined>();
   const [streaming, setStreaming] = useState(false);
-  const [lines, setLines] = useState<string[]>([]);
+  const [_rawLines, setLines] = useGlobal('history');
 
   useEffect(() => {
     console.log(fileInfo);
     window.ipc.stopTail();
     setStreaming(false);
-    setLines([]);
   }, [fileInfo]);
+
+  useEffect(() => {
+    if (!streaming) {
+      lines = ['Select a file to parse...'];
+      setLines(lines);
+    }
+  }, [streaming]);
 
   const streamLogs = () => {
     if (!filePath) {
@@ -54,7 +62,6 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
     if (streaming) {
       window.ipc.stopTail();
       setStreaming(false);
-      setLines([]);
       return;
     }
     try {
@@ -64,20 +71,21 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         ...fileInfo,
       });
 
+      setLines([...lines, 'test line ok']);
       watcher.start((line) => {
-        setLines([...lines, line]);
+        console.log('got line', line);
+        lines = [...lines, line];
+        setLines(lines);
         if (!streaming || line === 'START') {
           setStreaming(true);
         }
 
         if (line === 'STOP') {
           setStreaming(false);
-          setLines([]);
         }
       });
     } catch (e) {
       setStreaming(false);
-      setLines([]);
     }
   };
 
@@ -109,7 +117,7 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         {streaming ? 'Stop streaming' : 'Start streaming'}
       </button>
 
-      <HistoryLog lines={lines} />
+      <HistoryLog />
     </div>
   );
 };

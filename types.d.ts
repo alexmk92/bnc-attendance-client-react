@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import 'reactn';
 
 export interface BncAPI {
   fileWatcher: (config: FileWatcherConfig) => FileWatcher;
@@ -73,5 +74,29 @@ declare global {
   interface Raid {
     id: string;
     name: string;
+  }
+}
+
+declare module 'reactn/default' {
+  export interface Reducers {
+    append: (
+      global: State,
+      dispatch: Dispatch,
+      ...strings: any[]
+    ) => Pick<State, 'value'>;
+
+    increment: (
+      global: State,
+      dispatch: Dispatch,
+      i: number
+    ) => Pick<State, 'count'>;
+
+    doNothing: (global: State, dispatch: Dispatch) => null;
+  }
+
+  export interface State {
+    count: number;
+    value: string;
+    history: string[];
   }
 }
