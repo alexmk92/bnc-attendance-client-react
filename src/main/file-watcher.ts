@@ -101,6 +101,8 @@ const FileWatcher = function FileWatcher(
     await window.ipc.tail(
       `${this.config.filePath}\\${this.config.currentFile}`,
       async (line: string) => {
+        console.log('got line', line);
+        cb(line);
         const { timestamp, shouldParse } = parseTimestamp(
           line,
           this.config.seekFrom as number

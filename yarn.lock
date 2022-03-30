@@ -609,6 +609,11 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
+"@logdna/tail-file@^2.1.1":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@logdna/tail-file/-/tail-file-2.1.1.tgz#06a84273fcd6f32600db69daff3b04017b5005cd"
+  integrity sha512-WVq5fr6nHJY2+pBxSpAGRsYjekwILQWJLcfRoo2cr7SpXZ4BhbW/9AfYyWNRP36vBssaMR1AoyK5d1jA+ykBhw==
+
 "@malept/cross-spawn-promise@^1.1.0":
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/@malept/cross-spawn-promise/-/cross-spawn-promise-1.1.1.tgz#504af200af6b98e198bce768bc1730c6936ae01d"
@@ -8497,6 +8502,11 @@ spdy@^4.0.2:
     select-hose "^2.0.0"
     spdy-transport "^3.0.0"
 
+split2@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/split2/-/split2-4.1.0.tgz#101907a24370f85bb782f08adaabe4e281ecf809"
+  integrity sha512-VBiJxFkxiXRlUIeyMQi8s4hgvKCSjtknJv/LVYbrgALPwf5zSKmEwV9Lst25AkvMDnvxODugjdl6KZgwKM1WYQ==
+
 sprintf-js@^1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.1.2.tgz#da1765262bf8c0f571749f2ad6c26300207ae673"
@@ -8753,13 +8763,6 @@ table@^6.0.9:
     slice-ansi "^4.0.0"
     string-width "^4.2.3"
     strip-ansi "^6.0.1"
-
-tail-file@^1.4.15:
-  version "1.4.15"
-  resolved "https://registry.yarnpkg.com/tail-file/-/tail-file-1.4.15.tgz#f19dfc28ad22654204790795f13507e12b279a73"
-  integrity sha512-SOlfy4U7USsuLNTt2Xa8bPE36710tBgothRg0VWndNz0sRWMEEBzVT4Bbg8J9w1y7cRApPgkSpSPtXFYXJsQgw==
-  dependencies:
-    debug "^4.1.1"
 
 tailwindcss@^2.2.19:
   version "2.2.19"

@@ -73,7 +73,6 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
 
       setLines([...lines, 'test line ok']);
       watcher.start((line) => {
-        console.log('got line', line);
         lines = [...lines, line];
         setLines(lines);
         if (!streaming || line === 'START') {
