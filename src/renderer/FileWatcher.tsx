@@ -55,7 +55,7 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
     }
   }, [streaming]);
 
-  const streamLogs = () => {
+  function streamLogs() {
     if (!filePath) {
       return;
     }
@@ -87,7 +87,7 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
     } catch (e) {
       setStreaming(false);
     }
-  };
+  }
 
   return (
     <div className="rounded-md flex flex-col gap-3 w-96 px-6 py-6 bg-gradient-to-b from-gray-800 to-slate-900">
