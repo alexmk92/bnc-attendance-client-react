@@ -30,8 +30,8 @@
     ]
   },
   "build": {
-    "productName": "ElectronReact",
-    "appId": "org.erb.ElectronReact",
+    "productName": "BNC Attendance Client",
+    "appId": "org.erb.BncAttendance",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
