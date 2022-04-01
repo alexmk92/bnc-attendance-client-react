@@ -101,8 +101,6 @@ const FileWatcher = function FileWatcher(
     await window.ipc.tail(
       `${this.config.filePath}\\${this.config.currentFile}`,
       async (line: string) => {
-        console.log('got line', line);
-        cb(line);
         const { timestamp, shouldParse } = parseTimestamp(
           line,
           this.config.seekFrom as number
@@ -138,7 +136,7 @@ const FileWatcher = function FileWatcher(
                 );
               }
               this.isFinalTick = false;
-              cb('recorded tick', this.attendees);
+              cb(`recorded attendance for ${this.attendees.length} players`);
             }
             this.attendees = [];
           }

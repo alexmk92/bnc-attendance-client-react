@@ -97,6 +97,6 @@ declare module 'reactn/default' {
   export interface State {
     count: number;
     value: string;
-    history: string[];
+    history: { line: string; date: string }[];
   }
 }

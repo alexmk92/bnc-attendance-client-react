@@ -34,7 +34,7 @@ const extractFileInfo = (path: string) => {
 };
 
 type FileWatcherProps = RouteComponentProps<MockType, MockType, { raid: Raid }>;
-let lines: string[] = [];
+let lines: { line: string; date: string }[] = [];
 
 const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
   const [filePath, setFilePath] = useState<string>('');
@@ -50,7 +50,9 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
 
   useEffect(() => {
     if (!streaming) {
-      lines = ['Select a file to parse...'];
+      lines = [
+        { line: 'Select a file to parse...', date: new Date().toISOString() },
+      ];
       setLines(lines);
     }
   }, [streaming]);
@@ -71,9 +73,8 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         ...fileInfo,
       });
 
-      setLines([...lines, 'test line ok']);
       watcher.start((line) => {
-        lines = [...lines, line];
+        lines = [...lines.slice(-3), { date: new Date().toISOString(), line }];
         setLines(lines);
         if (!streaming || line === 'START') {
           setStreaming(true);
