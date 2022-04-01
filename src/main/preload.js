@@ -51,8 +51,6 @@ contextBridge.exposeInMainWorld('ipc', {
     currTail.pipe(split2()).on('data', (line) => {
       callback(line);
     });
-
-    callback('START', 'START');
   },
   baseUrl: 'https://bnc-attendance.fly.dev',
 });

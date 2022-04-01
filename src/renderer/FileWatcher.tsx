@@ -37,8 +37,12 @@ type FileWatcherProps = RouteComponentProps<MockType, MockType, { raid: Raid }>;
 let lines: { line: string; date: string }[] = [];
 
 const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
-  const [filePath, setFilePath] = useState<string>('');
-  const [fileInfo, setFileInfo] = useState<FileInfo | undefined>();
+  const [filePath, setFilePath] = useState<string>(
+    localStorage.getItem('filePath') || ''
+  );
+  const [fileInfo, setFileInfo] = useState<FileInfo | undefined>(
+    extractFileInfo(filePath)
+  );
   const [streaming, setStreaming] = useState(false);
   const [_rawLines, setLines] = useGlobal('history');
 
@@ -98,11 +102,13 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         </Link>
       </h1>
       <FilePathSelect
-        filePath={filePath}
+        filePath={fileInfo?.currentFile || ''}
         onChange={async (e) => {
           const path = e?.target?.files?.[0]?.path || '';
           setFilePath(path);
           setFileInfo(extractFileInfo(path));
+          localStorage.setItem('filePath', path);
+          console.log(path);
         }}
       />
 
