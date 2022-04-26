@@ -19,11 +19,21 @@ export default {
         throw new Error('Bad request');
       }
 
-      console.log('got res', res);
       return res.data;
     } catch (e) {
       return {};
     }
+  },
+  recordLoot: async (raidId, lootLines) => {
+    const loot = lootLines.map(({ playerName, itemName }) => {
+      return {
+        player_name: playerName.trim().toLowerCase(),
+        item_name: itemName.trim().toLowerCase(),
+      };
+    });
+
+    const res = await axios.post(`${BASE_URL}/raid/${raidId}/loot`, loot);
+    return res.data?.loot_recorded ?? 0;
   },
   //   startLotto: async (raidId: number, playerIds: string[]) => {
   //     return true;

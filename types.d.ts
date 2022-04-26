@@ -40,8 +40,10 @@ declare global {
   }
 
   interface FileWatcher {
+    lastRecordedAttendance: Date | null;
     tail: any | undefined;
     attendees: string[];
+    lootLines: { playerName: string; itemName: string; quantity: number }[];
     playerIds: { [key: string]: string };
     isRecording: boolean;
     isFinalTick: boolean;
@@ -49,6 +51,14 @@ declare global {
     start: (cb: (message: string, data?: {}) => void) => Promise<boolean>;
     stop: () => Promise<void>;
     setRecordAttendanceState: (line: string) => boolean;
+    parseAttendanceLine: (
+      cb: (message: string, data?: {}) => void,
+      line: string
+    ) => Promise<void>;
+    parseLootLine: (
+      cb: (message: string, data?: {}) => void,
+      line: string
+    ) => Promise<boolean>;
   }
 
   // API types
@@ -61,6 +71,10 @@ declare global {
       playerNames: string[],
       isFinalTick: boolean
     ) => Promise<boolean>;
+    recordLoot: (
+      raidId: number,
+      lootLines: { playerName: string; itemName: string; quantity: number }[]
+    ) => Promise<number>;
     startLotto: (raidId: number, playerIds: string[]) => Promise<boolean>;
     requestRollRange: (raidId: number, lottoId: number) => Promise<string>;
     fetchMains: () => Promise<{ [key: string]: string }>;
