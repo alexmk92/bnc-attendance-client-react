@@ -1,3 +1,4 @@
+import { useGlobal } from 'reactn';
 import { FC, useEffect, useState } from 'react';
 import { RouteComponentProps, withRouter } from 'react-router';
 import { Link } from 'react-router-dom';
@@ -33,27 +34,39 @@ const extractFileInfo = (path: string) => {
 };
 
 type FileWatcherProps = RouteComponentProps<MockType, MockType, { raid: Raid }>;
+let lines: { line: string; date: string }[] = [];
 
 const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
-  const [filePath, setFilePath] = useState<string>('');
-  const [fileInfo, setFileInfo] = useState<FileInfo | undefined>();
+  const [filePath, setFilePath] = useState<string>(
+    localStorage.getItem('filePath') || ''
+  );
+  const [fileInfo, setFileInfo] = useState<FileInfo | undefined>(
+    extractFileInfo(filePath)
+  );
   const [streaming, setStreaming] = useState(false);
-  const [lines, setLines] = useState<string[]>([]);
+  const [_rawLines, setLines] = useGlobal('history');
 
   useEffect(() => {
     window.ipc.stopTail();
     setStreaming(false);
-    setLines([]);
   }, [fileInfo]);
 
-  const streamLogs = () => {
+  useEffect(() => {
+    if (!streaming) {
+      lines = [
+        { line: 'Select a file to parse...', date: new Date().toISOString() },
+      ];
+      setLines(lines);
+    }
+  }, [streaming]);
+
+  function streamLogs() {
     if (!filePath) {
       return;
     }
     if (streaming) {
       window.ipc.stopTail();
       setStreaming(false);
-      setLines([]);
       return;
     }
     try {
@@ -64,14 +77,14 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
       });
 
       watcher.start((line) => {
-        setLines([...lines, line]);
+        lines = [...lines.slice(-3), { date: new Date().toISOString(), line }];
+        setLines(lines);
         if (!streaming || line === 'START') {
           setStreaming(true);
         }
 
         if (line === 'STOP') {
           setStreaming(false);
-          setLines([]);
         }
       });
     } catch (e) {
@@ -79,7 +92,7 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
       setLines([]);
       throw e;
     }
-  };
+  }
 
   return (
     <div className="rounded-md flex flex-col gap-3 w-96 px-6 py-6 bg-gradient-to-b from-gray-800 to-slate-900">
@@ -90,11 +103,13 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         </Link>
       </h1>
       <FilePathSelect
-        filePath={filePath}
+        filePath={fileInfo?.currentFile || ''}
         onChange={async (e) => {
           const path = e?.target?.files?.[0]?.path || '';
           setFilePath(path);
           setFileInfo(extractFileInfo(path));
+          localStorage.setItem('filePath', path);
+          console.log(path);
         }}
       />
 
@@ -130,7 +145,7 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         )}
       </button>
 
-      <HistoryLog lines={lines} />
+      <HistoryLog />
     </div>
   );
 };

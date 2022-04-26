@@ -104,10 +104,8 @@ const FileWatcher = function FileWatcher(
    * @returns
    */
   this.setRecordAttendanceState = (line: string): boolean => {
-    console.log(line);
     if (line.match(expressions.RECORD_FINAL_TICK)?.length === 1) {
       this.isFinalTick = true;
-      console.log('final');
       return true;
     }
     if (line.match(expressions.START_RECORD_ATTENDANCE)?.length === 1) {
@@ -134,7 +132,6 @@ const FileWatcher = function FileWatcher(
       throw new Error("Can't start tailing without a raidId");
     }
 
-    console.log('uh');
     cb(
       `processing file: ${this.config.filePath}\\${this.config.currentFile}`,
       {}
