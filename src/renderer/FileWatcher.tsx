@@ -22,8 +22,8 @@ interface FileInfo {
 const extractFileInfo = (path: string) => {
   const parts = path.split('\\');
   const fileNameParts = parts.pop()?.split('_');
-  const characterName = fileNameParts?.[2] || '';
-  const serverName = fileNameParts?.[1]?.split('.')?.[0] || '';
+  const characterName = fileNameParts?.[1] || '';
+  const serverName = fileNameParts?.[2]?.split('.')?.[0] || '';
 
   return {
     filePath: parts.join('\\'),

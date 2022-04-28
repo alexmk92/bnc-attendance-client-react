@@ -43,9 +43,8 @@ declare global {
   interface FileWatcher {
     lastRecordedAttendance: Date | null;
     tail: any | undefined;
-    attendees: string[];
-    lootLines: { playerName: string; itemName: string; quantity: number }[];
-    playerIds: { [key: string]: string };
+    attendees: Set<string>;
+    lootLines: LootLine[];
     isRecording: boolean;
     isFinalTick: boolean;
     config: FileWatcherConfig;
@@ -62,6 +61,13 @@ declare global {
     ) => Promise<boolean>;
   }
 
+  interface LootLine {
+    playerName: string;
+    itemName: string;
+    quantity?: number;
+    lootedFrom?: string;
+  }
+
   // API types
   interface BncHttpApi {
     fetchPlayerIds: (
@@ -72,10 +78,7 @@ declare global {
       playerNames: string[],
       isFinalTick: boolean
     ) => Promise<boolean>;
-    recordLoot: (
-      raidId: number,
-      lootLines: { playerName: string; itemName: string; quantity: number }[]
-    ) => Promise<number>;
+    recordLoot: (raidId: number, lootLines: LootLine[]) => Promise<number>;
     startLotto: (raidId: number, playerIds: string[]) => Promise<boolean>;
     requestRollRange: (raidId: number, lottoId: number) => Promise<string>;
     fetchMains: () => Promise<{ [key: string]: string }>;

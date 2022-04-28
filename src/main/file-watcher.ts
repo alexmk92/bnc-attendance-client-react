@@ -1,11 +1,39 @@
-import debounce from 'lodash.debounce';
 import API from './api';
+
+let lastRecordedLoot: Date | null = null;
+let lastRecordedAttendance: Date | null = null;
+let recordingAttendance = false;
+let recordingLoot = false;
 
 const expressions = {
   RECORD_FINAL_TICK: /RECORDING FINAL TICK/gi,
   START_RECORD_ATTENDANCE: /(Players in EverQuest:)/gi,
   END_RECORD_ATTENDANCE: /(There (are|is) ([0-9]+) player(s)? in EverQuest.)/gi,
-  LOOT_LINE: /([a-z]+) has looted (a|an|[0-9]+) ([a-z `']+) from/gi,
+  LOOT_LINE:
+    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `']+) from ([a-z `'-]+) corpse./gi,
+};
+
+const diffInSeconds = (a: Date, b: Date) => {
+  const diff = a.getTime() - b.getTime();
+  console.log('sec diff is', diff / 1000);
+  return diff / 1000;
+};
+
+const attemptToPushLootLines = async (
+  raidId: number,
+  lootLines: LootLine[],
+  cb: (res: number) => void
+) => {
+  if (
+    (!lastRecordedLoot || diffInSeconds(new Date(), lastRecordedLoot) > 10) &&
+    !recordingLoot
+  ) {
+    recordingLoot = true;
+    const res = await API.recordLoot(raidId, lootLines);
+    recordingLoot = false;
+    lastRecordedLoot = new Date();
+    cb(res);
+  }
 };
 
 const parseTimestamp = (line: string, lastParsedTimestamp: number) => {
@@ -38,49 +66,41 @@ const extractAttendanceInfo = (line: string) => {
   return matches[2];
 };
 
-const extractLootInfo = (line: string) => {
+const extractLootInfo = (
+  line: string,
+  logPlayerName: string
+): LootLine | false => {
   const regExp = new RegExp(expressions.LOOT_LINE);
   const matches = regExp.exec(line);
   if (!matches) {
     return false;
   }
 
+  console.log('WAS A LOOT LINE', matches);
   // @ts-ignore
-  const [fullLine, playerName, qty, itemName] = matches;
+  let [fullLine, playerName, hasOrHave, qty, itemName, lootedFrom] = matches;
   if (!playerName && !itemName) {
     return false;
+  }
+
+  if (playerName.toLowerCase().trim() === 'you') {
+    playerName = logPlayerName.toLowerCase().trim();
   }
 
   return {
     itemName: itemName.toLowerCase().trim(),
     playerName: playerName.toLowerCase().trim(),
-    quantity: parseInt(`${qty ?? 0}`, 10) || 0,
+    quantity: parseInt(`${qty ?? 1}`, 10) || 1,
+    lootedFrom: lootedFrom?.toLowerCase().trim(),
   };
-};
-
-/**
- * Only send a request every X seconds
- * @param lastRecordedDate
- * @param resendTime - time in s we can resend
- * @returns
- */
-const canRecord = (lastRecordedDate: Date | null, resendTime: number) => {
-  if (lastRecordedDate === null) {
-    return true;
-  }
-
-  const diffInMs = new Date().getTime() - lastRecordedDate.getTime();
-  return diffInMs / 1000 > resendTime;
 };
 
 const FileWatcher = function FileWatcher(
   this: FileWatcher,
   config: FileWatcherConfig
 ) {
-  this.lastRecordedAttendance = null;
   this.tail = undefined;
-  this.playerIds = {};
-  this.attendees = [];
+  this.attendees = new Set<string>();
   this.lootLines = [];
   this.isRecording = false;
   this.isFinalTick = false;
@@ -127,7 +147,6 @@ const FileWatcher = function FileWatcher(
    * Starts tailing the file for this raid.
    */
   this.start = async (cb) => {
-    console.log('ehere');
     if (!this.config.raidId) {
       throw new Error("Can't start tailing without a raidId");
     }
@@ -141,7 +160,6 @@ const FileWatcher = function FileWatcher(
     await window.ipc.tail(
       `${this.config.filePath}\\${this.config.currentFile}`,
       async (line: string) => {
-        console.log(line);
         const { timestamp, shouldParse } = parseTimestamp(
           line,
           this.config.seekFrom as number
@@ -149,6 +167,23 @@ const FileWatcher = function FileWatcher(
         // We don't want to reparse the same lines
         if (!shouldParse) {
           return;
+        }
+
+        this.parseAttendanceLine(cb, line);
+        this.parseLootLine(cb, line);
+
+        if (this.lootLines.length > 0) {
+          attemptToPushLootLines(
+            // @ts-ignore
+            this.config.raidId,
+            this.lootLines,
+            (res: number) => {
+              cb(
+                `Pushed ${res}/${this.lootLines.length} loot lines, next batch in 30s`
+              );
+              this.lootLines = [];
+            }
+          );
         }
 
         this.config.seekFrom = timestamp;
@@ -161,67 +196,73 @@ const FileWatcher = function FileWatcher(
   this.parseLootLine = async (cb, line) => {
     const raidId = this.config.raidId as unknown as number | null;
     if (!raidId) {
+      console.log('no loto');
       return false;
     }
 
-    const lootInfo = extractLootInfo(line);
+    const lootInfo = extractLootInfo(line, this.config.characterName || '');
     if (!lootInfo) {
+      console.log('no info', line);
       return false;
     }
 
-    const { playerName, itemName, quantity } = lootInfo;
+    let { playerName, itemName, quantity, lootedFrom } = lootInfo;
     if (!playerName || !itemName) {
       return false;
     }
+
+    lootedFrom =
+      lootedFrom?.toLowerCase().trim().replace('`s', '').replace(`'s`, '') ||
+      undefined;
 
     this.lootLines.push({
       playerName: playerName.toLowerCase().trim(),
       itemName: itemName.toLowerCase().trim(),
       quantity,
+      lootedFrom,
     });
 
-    await debounce(async () => {
-      const res = await API.recordLoot(raidId, this.lootLines);
-      cb(
-        `Pushed ${res}/${this.lootLines.length} loot lines, next batch in 30s`
-      );
-      this.lootLines = [];
-    }, 30 * 1000);
+    cb(
+      `${playerName} looted ${quantity}x ${itemName} from ${lootedFrom}'s corpse`
+    );
 
     return true;
   };
 
   this.parseAttendanceLine = async (cb, line) => {
-    console.log(line);
-    if (!canRecord(this.lastRecordedAttendance, 30)) {
-      console.log('no record');
-      cb('Attendance can only be sent once every 30 seconds', {});
-      return;
-    }
-
     const recordAttendanceIteration = this.setRecordAttendanceState(line);
-    console.log(recordAttendanceIteration);
+    console.log('iteration', recordAttendanceIteration);
     if (recordAttendanceIteration) {
       if (this.isRecording) {
         // Later lets extract zone info so we can check if the player is in the raid
         const player = extractAttendanceInfo(line);
-        if (player && !this.attendees.includes(player)) {
-          this.attendees.push(player.trim().toLowerCase());
+        if (player) {
+          this.attendees.add(player.trim().toLowerCase());
         }
-      } else {
-        if (this.attendees.length > 0) {
-          if (this.config.raidId) {
-            await API.recordAttendance(
-              this.config.raidId,
-              this.attendees,
-              this.isFinalTick
-            );
-          }
+      } else if (this.attendees.size > 0 && this.config.raidId) {
+        if (
+          (this.isFinalTick ||
+            !lastRecordedAttendance ||
+            diffInSeconds(new Date(), lastRecordedAttendance) > 10) &&
+          !recordingAttendance
+        ) {
+          recordingAttendance = true;
+          const { raidId } = this.config;
+          const { attendees, isFinalTick } = this;
+          await API.recordAttendance(
+            raidId,
+            Array.from(attendees),
+            isFinalTick
+          );
+          cb(
+            `Recorded tick for ${this.attendees.size} players`,
+            this.attendees
+          );
           this.isFinalTick = false;
-          cb('recorded tick', this.attendees);
+          this.attendees = new Set<string>();
+          lastRecordedAttendance = new Date();
+          recordingAttendance = false;
         }
-        this.attendees = [];
-        this.lastRecordedAttendance = new Date();
       }
     }
   };
