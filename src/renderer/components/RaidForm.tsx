@@ -6,7 +6,6 @@ interface RaidFormProps {
 
 const RaidForm: FC<RaidFormProps> = ({ onChange }) => {
   const [raidName, setRaidName] = useState<string>('');
-  const [split, setSplit] = useState<string>('1');
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,7 +19,7 @@ const RaidForm: FC<RaidFormProps> = ({ onChange }) => {
       console.error(err);
     };
 
-    xhr.send(JSON.stringify({ name: raidName, split }));
+    xhr.send(JSON.stringify({ name: raidName, split: 1 }));
   };
   return (
     <form
@@ -28,7 +27,7 @@ const RaidForm: FC<RaidFormProps> = ({ onChange }) => {
       onSubmit={handleSubmit}
       method="POST"
     >
-      <h1>Create raid</h1>
+      <h1>Begin raid</h1>
       <input
         className="text-black p-3 rounded bg-gray-900 text-white border-gray-700 border"
         onChange={(e) => setRaidName(e.target.value)}
@@ -36,14 +35,14 @@ const RaidForm: FC<RaidFormProps> = ({ onChange }) => {
         name="name"
         placeholder="Raid name"
       />
-      <select
+      {/* <select
         className="text-black p-3 rounded bg-gray-900 text-white border-gray-700 border"
         onChange={(e) => setSplit(e.target.value)}
         name="split"
       >
         <option value="1">Split 1</option>
         <option value="2">Split 2</option>
-      </select>
+      </select> */}
       <button className="bg-blue-500 text-white" type="submit">
         Save
       </button>
