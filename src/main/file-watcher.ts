@@ -5,12 +5,67 @@ let lastRecordedAttendance: Date | null = null;
 let recordingAttendance = false;
 let recordingLoot = false;
 
+const MANUALLY_ASSIGNED = 'manually assigned';
+
 const expressions = {
   RECORD_FINAL_TICK: /RECORDING FINAL TICK/gi,
   START_RECORD_ATTENDANCE: /(Players in EverQuest:)/gi,
   END_RECORD_ATTENDANCE: /(There (are|is) ([0-9]+) player(s)? in EverQuest.)/gi,
   LOOT_LINE:
-    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `']+) from ([a-z `'-]+) corpse./gi,
+    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `']+) from ([a-z `'-]+)( corpse)?.?/gi,
+  MANUAL_LOOT_LINE: /([a-z]+) LOOT ([a-z -'`]+)/gi,
+  LOOT_ASSIGNED: /(a|an|[0-9]+) ([a-z -'`]+) (?:was|were) given to ([a-z]+)/gi,
+};
+
+const trimChars = (src: string, c: string) => {
+  // @ts-ignore
+  const re = new RegExp('^[' + c + ']+|[' + c + ']+$', 'g');
+  return src.replace(re, '');
+};
+
+// Attempts to parse a manual loot line
+const transformManualLootLine = (line: string) => {
+  const regExp = new RegExp(expressions.MANUAL_LOOT_LINE);
+  const matches = regExp.exec(line);
+  if (!matches) {
+    return line;
+  }
+
+  // @ts-ignore
+  const [fullLine, playerName, itemName] = matches;
+  if (!playerName && !itemName) {
+    return line;
+  }
+
+  return `${playerName} has looted a ${itemName} from ${MANUALLY_ASSIGNED}`;
+};
+
+const createPendingLootLine = (
+  line: string,
+  logPlayerName: string
+): LootLine | null => {
+  const regExp = new RegExp(expressions.LOOT_ASSIGNED);
+  const matches = regExp.exec(line);
+  if (!matches) {
+    return null;
+  }
+
+  // @ts-ignore
+  const [fullLine, quantity, itemName, playerName] = matches;
+  let player = playerName;
+  if (player.toLowerCase().trim() === 'you') {
+    player = logPlayerName.toLowerCase().trim();
+  }
+
+  return {
+    itemName: itemName.toLowerCase().trim(),
+    playerName: player.toLowerCase().trim(),
+    quantity: parseInt(`${quantity ?? 1}`, 10) || 1,
+    lootedFrom: MANUALLY_ASSIGNED,
+    hasBeenLooted: false,
+    wasAssigned: true,
+    timestamp: new Date(),
+  };
 };
 
 const diffInSeconds = (a: Date, b: Date) => {
@@ -29,7 +84,10 @@ const attemptToPushLootLines = async (
     !recordingLoot
   ) {
     recordingLoot = true;
-    const res = await API.recordLoot(raidId, lootLines);
+    const res = await API.recordLoot(
+      raidId,
+      lootLines.filter((l) => l.hasBeenLooted)
+    );
     recordingLoot = false;
     lastRecordedLoot = new Date();
     cb(res);
@@ -76,7 +134,6 @@ const extractLootInfo = (
     return false;
   }
 
-  console.log('WAS A LOOT LINE', matches);
   // @ts-ignore
   let [fullLine, playerName, hasOrHave, qty, itemName, lootedFrom] = matches;
   if (!playerName && !itemName) {
@@ -92,6 +149,8 @@ const extractLootInfo = (
     playerName: playerName.toLowerCase().trim(),
     quantity: parseInt(`${qty ?? 1}`, 10) || 1,
     lootedFrom: lootedFrom?.toLowerCase().trim(),
+    hasBeenLooted: false,
+    wasAssigned: false,
   };
 };
 
@@ -172,16 +231,21 @@ const FileWatcher = function FileWatcher(
         this.parseAttendanceLine(cb, line);
         this.parseLootLine(cb, line);
 
+        const pushableLines = this.lootLines.filter((l) => l.hasBeenLooted);
         if (this.lootLines.length > 0) {
           attemptToPushLootLines(
             // @ts-ignore
             this.config.raidId,
-            this.lootLines,
+            pushableLines,
             (res: number) => {
               cb(
-                `Pushed ${res}/${this.lootLines.length} loot lines, next batch in 30s`
+                `Pushed ${res}/${this.lootLines.length} loot lines, remaining items have not yet been looted, next batch in 10s`
               );
-              this.lootLines = [];
+              this.lootLines = this.lootLines.filter(
+                (l) =>
+                  !l.hasBeenLooted ||
+                  (l.timestamp && diffInSeconds(new Date(), l.timestamp) < 60)
+              );
             }
           );
         }
@@ -193,37 +257,69 @@ const FileWatcher = function FileWatcher(
     return true;
   };
 
-  this.parseLootLine = async (cb, line) => {
+  this.parseLootLine = async (cb, rawLine) => {
     const raidId = this.config.raidId as unknown as number | null;
     if (!raidId) {
-      console.log('no loto');
       return false;
     }
+    // We could have assigned loot
+    const potentialPendingLootLine = createPendingLootLine(
+      rawLine,
+      this.config.characterName || ''
+    );
+    if (potentialPendingLootLine) {
+      this.lootLines.push(potentialPendingLootLine);
+      return false;
+    }
+    // This could either be a line or a transformed line.
+    const line = transformManualLootLine(trimChars(rawLine, "'"));
 
     const lootInfo = extractLootInfo(line, this.config.characterName || '');
     if (!lootInfo) {
-      console.log('no info', line);
       return false;
     }
 
-    let { playerName, itemName, quantity, lootedFrom } = lootInfo;
+    const { playerName, itemName, quantity, lootedFrom } = lootInfo;
     if (!playerName || !itemName) {
       return false;
     }
 
-    lootedFrom =
-      lootedFrom?.toLowerCase().trim().replace('`s', '').replace(`'s`, '') ||
-      undefined;
+    const fmtLootedFrom =
+      lootedFrom
+        ?.toLowerCase()
+        .trim()
+        .replace('`s', '')
+        .replace(`'s`, '')
+        .replace('corpse', '')
+        .replace('.', '') || undefined;
 
-    this.lootLines.push({
-      playerName: playerName.toLowerCase().trim(),
-      itemName: itemName.toLowerCase().trim(),
-      quantity,
-      lootedFrom,
-    });
+    const pendingIdx = this.lootLines.findIndex(
+      (l) =>
+        l.playerName === playerName &&
+        l.itemName === itemName &&
+        l.hasBeenLooted === false &&
+        l.wasAssigned === true
+    );
+
+    if (pendingIdx && this.lootLines?.[pendingIdx]) {
+      this.lootLines[pendingIdx].hasBeenLooted = true;
+      this.lootLines[pendingIdx].quantity = quantity;
+      this.lootLines[pendingIdx].lootedFrom = fmtLootedFrom;
+      console.log('UPDATED IT');
+      console.log(this.lootLines);
+    } else {
+      this.lootLines.push({
+        playerName: playerName.toLowerCase().trim(),
+        itemName: itemName.toLowerCase().trim(),
+        quantity,
+        lootedFrom: fmtLootedFrom,
+        hasBeenLooted: true,
+        wasAssigned: lootedFrom === MANUALLY_ASSIGNED,
+      });
+    }
 
     cb(
-      `${playerName} looted ${quantity}x ${itemName} from ${lootedFrom}'s corpse`
+      `${playerName} looted ${quantity}x ${itemName} from ${fmtLootedFrom}'s corpse`
     );
 
     return true;
@@ -231,7 +327,6 @@ const FileWatcher = function FileWatcher(
 
   this.parseAttendanceLine = async (cb, line) => {
     const recordAttendanceIteration = this.setRecordAttendanceState(line);
-    console.log('iteration', recordAttendanceIteration);
     if (recordAttendanceIteration) {
       if (this.isRecording) {
         // Later lets extract zone info so we can check if the player is in the raid

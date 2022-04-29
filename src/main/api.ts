@@ -26,12 +26,13 @@ export default {
   },
   recordLoot: async (raidId, lootLines) => {
     const loot = lootLines.map(
-      ({ playerName, itemName, quantity, lootedFrom }) => {
+      ({ playerName, itemName, quantity, lootedFrom, wasAssigned }) => {
         return {
           playerName: playerName.trim().toLowerCase(),
           itemName: itemName.trim().toLowerCase(),
           lootedFrom: lootedFrom?.trim().toLowerCase() || null,
           quantity: parseInt(`${quantity}` ?? 1, 10) || 1,
+          wasAssigned: wasAssigned ? 1 : 0,
         };
       }
     );

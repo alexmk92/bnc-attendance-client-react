@@ -66,6 +66,9 @@ declare global {
     itemName: string;
     quantity?: number;
     lootedFrom?: string;
+    wasAssigned: boolean;
+    hasBeenLooted: boolean;
+    timestamp?: Date;
   }
 
   // API types
