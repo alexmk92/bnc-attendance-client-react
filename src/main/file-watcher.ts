@@ -7,6 +7,8 @@ let recordingLoot = false;
 
 const MANUALLY_ASSIGNED = 'manually assigned';
 
+const pendingLoot: LootLine[] = [];
+
 const expressions = {
   RECORD_FINAL_TICK: /RECORDING FINAL TICK/gi,
   START_RECORD_ATTENDANCE: /(Players in EverQuest:)/gi,
@@ -62,9 +64,7 @@ const createPendingLootLine = (
     playerName: player.toLowerCase().trim(),
     quantity: parseInt(`${quantity ?? 1}`, 10) || 1,
     lootedFrom: MANUALLY_ASSIGNED,
-    hasBeenLooted: false,
     wasAssigned: true,
-    timestamp: new Date(),
   };
 };
 
@@ -84,10 +84,7 @@ const attemptToPushLootLines = async (
     !recordingLoot
   ) {
     recordingLoot = true;
-    const res = await API.recordLoot(
-      raidId,
-      lootLines.filter((l) => l.hasBeenLooted)
-    );
+    const res = await API.recordLoot(raidId, lootLines);
     recordingLoot = false;
     lastRecordedLoot = new Date();
     cb(res);
@@ -149,7 +146,6 @@ const extractLootInfo = (
     playerName: playerName.toLowerCase().trim(),
     quantity: parseInt(`${qty ?? 1}`, 10) || 1,
     lootedFrom: lootedFrom?.toLowerCase().trim(),
-    hasBeenLooted: false,
     wasAssigned: false,
   };
 };
@@ -231,21 +227,16 @@ const FileWatcher = function FileWatcher(
         this.parseAttendanceLine(cb, line);
         this.parseLootLine(cb, line);
 
-        const pushableLines = this.lootLines.filter((l) => l.hasBeenLooted);
         if (this.lootLines.length > 0) {
           attemptToPushLootLines(
             // @ts-ignore
             this.config.raidId,
-            pushableLines,
+            this.lootLines,
             (res: number) => {
               cb(
                 `Pushed ${res}/${this.lootLines.length} loot lines, remaining items have not yet been looted, next batch in 10s`
               );
-              this.lootLines = this.lootLines.filter(
-                (l) =>
-                  !l.hasBeenLooted ||
-                  (l.timestamp && diffInSeconds(new Date(), l.timestamp) < 60)
-              );
+              this.lootLines = [];
             }
           );
         }
@@ -268,7 +259,7 @@ const FileWatcher = function FileWatcher(
       this.config.characterName || ''
     );
     if (potentialPendingLootLine) {
-      this.lootLines.push(potentialPendingLootLine);
+      pendingLoot.push(potentialPendingLootLine);
       return false;
     }
     // This could either be a line or a transformed line.
@@ -293,30 +284,26 @@ const FileWatcher = function FileWatcher(
         .replace('corpse', '')
         .replace('.', '') || undefined;
 
-    const pendingIdx = this.lootLines.findIndex(
+    const pendingItemIndex = pendingLoot.findIndex(
       (l) =>
-        l.playerName === playerName &&
-        l.itemName === itemName &&
-        l.hasBeenLooted === false &&
-        l.wasAssigned === true
+        l &&
+        l?.playerName === playerName &&
+        l?.itemName === itemName &&
+        l?.wasAssigned === true
     );
 
-    if (pendingIdx && this.lootLines?.[pendingIdx]) {
-      this.lootLines[pendingIdx].hasBeenLooted = true;
-      this.lootLines[pendingIdx].quantity = quantity;
-      this.lootLines[pendingIdx].lootedFrom = fmtLootedFrom;
-      console.log('UPDATED IT');
-      console.log(this.lootLines);
-    } else {
-      this.lootLines.push({
-        playerName: playerName.toLowerCase().trim(),
-        itemName: itemName.toLowerCase().trim(),
-        quantity,
-        lootedFrom: fmtLootedFrom,
-        hasBeenLooted: true,
-        wasAssigned: lootedFrom === MANUALLY_ASSIGNED,
-      });
+    const pendingItem = pendingLoot?.[pendingItemIndex];
+    if (pendingItem) {
+      delete pendingLoot[pendingItemIndex];
     }
+
+    this.lootLines.push({
+      playerName: playerName.toLowerCase().trim(),
+      itemName: itemName.toLowerCase().trim(),
+      quantity,
+      lootedFrom: fmtLootedFrom,
+      wasAssigned: pendingItem?.wasAssigned || lootedFrom === MANUALLY_ASSIGNED,
+    });
 
     cb(
       `${playerName} looted ${quantity}x ${itemName} from ${fmtLootedFrom}'s corpse`
