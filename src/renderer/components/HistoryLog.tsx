@@ -1,22 +1,16 @@
-import { FC, useEffect, useState } from 'react';
+import { FC } from 'react';
+import { useGlobal } from 'reactn';
+import { prettyDate } from '../helpers';
 
-interface HistoryLogProps {
-  lines: string[];
-}
-
-const HistoryLog: FC<HistoryLogProps> = ({ lines }) => {
-  const [renderLines, setRenderLines] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (lines.length > 0) {
-      setRenderLines(lines);
-    }
-  }, [lines]);
+const HistoryLog: FC = () => {
+  const [lines] = useGlobal('history');
 
   return (
-    <div className="absolute max-h-48 w-full overflow-y-scroll bottom-0 left-0">
-      {renderLines.map((line, idx) => (
-        <p key={idx}>{line}</p>
+    <div className="p-2 text-sm absolute max-h-48 w-full overflow-hidden bottom-0 left-0">
+      {lines.map(({ line, date }, idx) => (
+        <p key={`line-${idx}`}>
+          <span className="text-gray-500">[{prettyDate(date)}]</span> {line}
+        </p>
       ))}
     </div>
   );

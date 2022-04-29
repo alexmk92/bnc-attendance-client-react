@@ -590,6 +590,11 @@
     "@types/yargs" "^16.0.0"
     "chalk" "^4.0.0"
 
+"@logdna/tail-file@^2.1.1":
+  "integrity" "sha512-XGSsWDweP80Fks16lwkAUIr54ICyBs6PsI4mpfTLQaWgEJRtY9xEV+PeyDpJ+sJEGZxqINlpmAwe/6tS1pP8Ng=="
+  "resolved" "https://registry.npmjs.org/@logdna/tail-file/-/tail-file-2.2.0.tgz"
+  "version" "2.2.0"
+
 "@malept/cross-spawn-promise@^1.1.0":
   "integrity" "sha512-RTBGWL5FWQcg9orDOCcp4LvItNzUPcyEU9bwaeJX0rJ1IQxzucC48Y0/sQLp/g6t99IQgAlGIaesJS+gTn7tVQ=="
   "resolved" "https://registry.npmjs.org/@malept/cross-spawn-promise/-/cross-spawn-promise-1.1.1.tgz"
@@ -970,6 +975,18 @@
   dependencies:
     "@types/node" "*"
 
+"@types/lodash.debounce@^4.0.7":
+  "integrity" "sha512-X1T4wMZ+gT000M2/91SYj0d/7JfeNZ9PeeOldSNoE/lunLeQXKvkmIumI29IaKMotU/ln/McOIvgzZcQ/3TrSA=="
+  "resolved" "https://registry.npmjs.org/@types/lodash.debounce/-/lodash.debounce-4.0.7.tgz"
+  "version" "4.0.7"
+  dependencies:
+    "@types/lodash" "*"
+
+"@types/lodash@*":
+  "integrity" "sha512-/THyiqyQAP9AfARo4pF+aCGcyiQ94tX/Is2I7HofNRqoYLgN1PBoOWu2/zTA5zMxzP5EFutMtWtGAFRKUe961Q=="
+  "resolved" "https://registry.npmjs.org/@types/lodash/-/lodash-4.14.182.tgz"
+  "version" "4.14.182"
+
 "@types/minimatch@*":
   "integrity" "sha512-Klz949h02Gz2uZCMGwDUSDS1YBlTdDDgbWHi+81l29tQALUtvz4rAYi5uoVhE5Lagoq6DeqAUlbrHvW/mXDgdQ=="
   "resolved" "https://registry.npmjs.org/@types/minimatch/-/minimatch-3.0.5.tgz"
@@ -1036,7 +1053,7 @@
   dependencies:
     "@types/react" "*"
 
-"@types/react@*", "@types/react@^17.0.33":
+"@types/react@*", "@types/react@^16.8.0", "@types/react@^17.0.33":
   "integrity" "sha512-pLWntxXpDPaU+RTAuSGWGSEL2FRTNyRQOjSWDke/rxRg14ncsZvx8AKWMWZqvc1UOaJIAoObdZhAWvRaHFi5rw=="
   "resolved" "https://registry.npmjs.org/@types/react/-/react-17.0.33.tgz"
   "version" "17.0.33"
@@ -6313,6 +6330,11 @@
   "resolved" "https://registry.npmjs.org/lodash.clonedeep/-/lodash.clonedeep-4.5.0.tgz"
   "version" "4.5.0"
 
+"lodash.debounce@^4.0.8":
+  "integrity" "sha1-gteb/zCmfEAF/9XiUVMArZyk168="
+  "resolved" "https://registry.npmjs.org/lodash.debounce/-/lodash.debounce-4.0.8.tgz"
+  "version" "4.0.8"
+
 "lodash.escape@^4.0.1":
   "integrity" "sha1-yQRGkMIeBClL6qUXcS/e0fqI3pg="
   "resolved" "https://registry.npmjs.org/lodash.escape/-/lodash.escape-4.0.1.tgz"
@@ -7940,6 +7962,13 @@
     "loose-envify" "^1.1.0"
     "object-assign" "^4.1.1"
 
+"reactn@^2.2.7":
+  "integrity" "sha512-cqnt23kWN/ABqEZhW3OlpqI1DgTaaNDeHpSHtyd81qk0H1jd32zPTzJ69Hpzti2WakwNYveGFPIgI6i7E7nXOA=="
+  "resolved" "https://registry.npmjs.org/reactn/-/reactn-2.2.7.tgz"
+  "version" "2.2.7"
+  dependencies:
+    "use-force-update" "^1.0.5"
+
 "read-config-file@6.2.0":
   "integrity" "sha512-gx7Pgr5I56JtYz+WuqEbQHj/xWo+5Vwua2jhb1VwM4Wid5PqYmZ4i00ZB0YEGIfkVBsCv9UrjgyqCiQfS/Oosg=="
   "resolved" "https://registry.npmjs.org/read-config-file/-/read-config-file-6.2.0.tgz"
@@ -8632,6 +8661,11 @@
     "select-hose" "^2.0.0"
     "spdy-transport" "^3.0.0"
 
+"split2@^4.1.0":
+  "integrity" "sha512-VBiJxFkxiXRlUIeyMQi8s4hgvKCSjtknJv/LVYbrgALPwf5zSKmEwV9Lst25AkvMDnvxODugjdl6KZgwKM1WYQ=="
+  "resolved" "https://registry.npmjs.org/split2/-/split2-4.1.0.tgz"
+  "version" "4.1.0"
+
 "sprintf-js@^1.1.2":
   "integrity" "sha512-VE0SOVEHCk7Qc8ulkWw3ntAzXuqf7S2lvwQaDLRnUeIEaKNQJzV6BwmLKhOqT61aGhfUMrXeaBk+oDGCzvhcug=="
   "resolved" "https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.1.2.tgz"
@@ -8965,13 +8999,6 @@
     "slice-ansi" "^4.0.0"
     "string-width" "^4.2.3"
     "strip-ansi" "^6.0.1"
-
-"tail-file@^1.4.15":
-  "integrity" "sha512-SOlfy4U7USsuLNTt2Xa8bPE36710tBgothRg0VWndNz0sRWMEEBzVT4Bbg8J9w1y7cRApPgkSpSPtXFYXJsQgw=="
-  "resolved" "https://registry.npmjs.org/tail-file/-/tail-file-1.4.15.tgz"
-  "version" "1.4.15"
-  dependencies:
-    "debug" "^4.1.1"
 
 "tailwindcss@^2.2.19":
   "integrity" "sha512-6Ui7JSVtXadtTUo2NtkBBacobzWiQYVjYW0ZnKaP9S1ZCKQ0w7KVNz+YSDI/j7O7KCMHbOkz94ZMQhbT9pOqjw=="
@@ -9446,6 +9473,11 @@
   dependencies:
     "punycode" "1.3.2"
     "querystring" "0.2.0"
+
+"use-force-update@^1.0.5":
+  "integrity" "sha512-k5dppYhO+I5X/cd7ildbrzeMZJkWwdAh5adaIk0qKN2euh7J0h2GBGBcB4QZ385eyHHnp7LIygvebdRx3XKdwA=="
+  "resolved" "https://registry.npmjs.org/use-force-update/-/use-force-update-1.0.7.tgz"
+  "version" "1.0.7"
 
 "utf8-byte-length@^1.0.1":
   "integrity" "sha1-9F8VDExm7uloGGUFq5P8u4rWv2E="

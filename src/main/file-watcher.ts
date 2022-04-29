@@ -40,7 +40,10 @@ const transformManualLootLine = (line: string) => {
   return `${playerName} has looted a ${itemName} from ${MANUALLY_ASSIGNED}`;
 };
 
-const createPendingLootLine = (line: string, logPlayerName: string) => {
+const createPendingLootLine = (
+  line: string,
+  logPlayerName: string
+): LootLine | null => {
   const regExp = new RegExp(expressions.LOOT_ASSIGNED);
   const matches = regExp.exec(line);
   if (!matches) {
@@ -61,6 +64,7 @@ const createPendingLootLine = (line: string, logPlayerName: string) => {
     lootedFrom: MANUALLY_ASSIGNED,
     hasBeenLooted: false,
     wasAssigned: true,
+    timestamp: new Date(),
   };
 };
 
@@ -237,7 +241,11 @@ const FileWatcher = function FileWatcher(
               cb(
                 `Pushed ${res}/${this.lootLines.length} loot lines, remaining items have not yet been looted, next batch in 10s`
               );
-              this.lootLines = this.lootLines.filter((l) => !l.hasBeenLooted);
+              this.lootLines = this.lootLines.filter(
+                (l) =>
+                  !l.hasBeenLooted ||
+                  (l.timestamp && diffInSeconds(new Date(), l.timestamp) < 60)
+              );
             }
           );
         }

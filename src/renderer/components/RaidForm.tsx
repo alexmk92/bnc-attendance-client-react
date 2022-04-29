@@ -27,7 +27,7 @@ const RaidForm: FC<RaidFormProps> = ({ onChange }) => {
       onSubmit={handleSubmit}
       method="POST"
     >
-      <h1>Create raid</h1>
+      <h1>Begin raid</h1>
       <input
         className="text-black p-3 rounded bg-gray-900 text-white border-gray-700 border"
         onChange={(e) => setRaidName(e.target.value)}

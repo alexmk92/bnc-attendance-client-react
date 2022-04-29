@@ -1,3 +1,4 @@
+import { useGlobal } from 'reactn';
 import { FC, useEffect, useState } from 'react';
 import { RouteComponentProps, withRouter } from 'react-router';
 import { Link } from 'react-router-dom';
@@ -21,8 +22,8 @@ interface FileInfo {
 const extractFileInfo = (path: string) => {
   const parts = path.split('\\');
   const fileNameParts = parts.pop()?.split('_');
-  const characterName = fileNameParts?.[2] || '';
-  const serverName = fileNameParts?.[1]?.split('.')?.[0] || '';
+  const characterName = fileNameParts?.[1] || '';
+  const serverName = fileNameParts?.[2]?.split('.')?.[0] || '';
 
   return {
     filePath: parts.join('\\'),
@@ -33,19 +34,31 @@ const extractFileInfo = (path: string) => {
 };
 
 type FileWatcherProps = RouteComponentProps<MockType, MockType, { raid: Raid }>;
+let lines: { line: string; date: string }[] = [];
 
 const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
-  const [filePath, setFilePath] = useState<string>('');
-  const [fileInfo, setFileInfo] = useState<FileInfo | undefined>();
+  const [filePath, setFilePath] = useState<string>(
+    localStorage.getItem('filePath') || ''
+  );
+  const [fileInfo, setFileInfo] = useState<FileInfo | undefined>(
+    extractFileInfo(filePath)
+  );
   const [streaming, setStreaming] = useState(false);
-  const [lines, setLines] = useState<string[]>([]);
+  const [_rawLines, setLines] = useGlobal('history');
 
   useEffect(() => {
-    console.log(fileInfo);
     window.ipc.stopTail();
     setStreaming(false);
-    setLines([]);
   }, [fileInfo]);
+
+  useEffect(() => {
+    if (!streaming) {
+      lines = [
+        { line: 'Select a file to parse...', date: new Date().toISOString() },
+      ];
+      setLines(lines);
+    }
+  }, [streaming]);
 
   function streamLogs() {
     if (!filePath) {
@@ -54,7 +67,6 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
     if (streaming) {
       window.ipc.stopTail();
       setStreaming(false);
-      setLines([]);
       return;
     }
     try {
@@ -65,19 +77,20 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
       });
 
       watcher.start((line) => {
-        setLines([...lines, line]);
+        lines = [...lines.slice(-3), { date: new Date().toISOString(), line }];
+        setLines(lines);
         if (!streaming || line === 'START') {
           setStreaming(true);
         }
 
         if (line === 'STOP') {
           setStreaming(false);
-          setLines([]);
         }
       });
     } catch (e) {
       setStreaming(false);
       setLines([]);
+      throw e;
     }
   }
 
@@ -90,26 +103,49 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
         </Link>
       </h1>
       <FilePathSelect
-        filePath={filePath}
+        filePath={fileInfo?.currentFile || ''}
         onChange={async (e) => {
           const path = e?.target?.files?.[0]?.path || '';
           setFilePath(path);
           setFileInfo(extractFileInfo(path));
+          localStorage.setItem('filePath', path);
+          console.log(path);
         }}
       />
 
       <button
         className={`disabled:bg-gray-400 disabled:cursor-not-allowed text-white ${
-          streaming ? 'bg-green-500' : 'bg-blue-500'
+          streaming ? 'bg-red-500' : 'bg-green-500'
         }`}
         onClick={streamLogs}
         type="button"
         {...(filePath.length === 0 ? { disabled: true } : {})}
       >
-        {streaming ? 'Stop streaming' : 'Start streaming'}
+        {streaming ? (
+          <div className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            <span>Stop streaming</span>
+          </div>
+        ) : (
+          'Start streaming'
+        )}
       </button>
 
-      <HistoryLog lines={lines} />
+      <HistoryLog />
     </div>
   );
 };

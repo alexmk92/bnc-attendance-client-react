@@ -25,7 +25,6 @@ export default {
     }
   },
   recordLoot: async (raidId, lootLines) => {
-    console.log('PUSHING LINES', lootLines);
     const loot = lootLines.map(
       ({ playerName, itemName, quantity, lootedFrom, wasAssigned }) => {
         return {

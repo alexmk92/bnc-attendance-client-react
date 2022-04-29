@@ -8,6 +8,7 @@ const Raid: FC = () => {
   const updateRaid = (raid: Raid) => {
     history.push('/attendance', { raid });
   };
+
   return (
     <div>
       <RaidForm onChange={updateRaid} />
