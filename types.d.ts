@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import 'reactn';
 
 export interface BncAPI {
   fileWatcher: (config: FileWatcherConfig) => FileWatcher;
@@ -40,15 +41,33 @@ declare global {
   }
 
   interface FileWatcher {
+    lastRecordedAttendance: Date | null;
     tail: any | undefined;
-    attendees: string[];
-    playerIds: { [key: string]: string };
+    attendees: Set<string>;
+    lootLines: LootLine[];
     isRecording: boolean;
     isFinalTick: boolean;
     config: FileWatcherConfig;
     start: (cb: (message: string, data?: {}) => void) => Promise<boolean>;
     stop: () => Promise<void>;
     setRecordAttendanceState: (line: string) => boolean;
+    parseAttendanceLine: (
+      cb: (message: string, data?: {}) => void,
+      line: string
+    ) => Promise<void>;
+    parseLootLine: (
+      cb: (message: string, data?: {}) => void,
+      line: string
+    ) => Promise<boolean>;
+  }
+
+  interface LootLine {
+    playerName: string;
+    itemName: string;
+    quantity?: number;
+    lootedFrom?: string;
+    wasAssigned: boolean;
+    hasBeenLooted: boolean;
   }
 
   // API types
@@ -61,6 +80,7 @@ declare global {
       playerNames: string[],
       isFinalTick: boolean
     ) => Promise<boolean>;
+    recordLoot: (raidId: number, lootLines: LootLine[]) => Promise<number>;
     startLotto: (raidId: number, playerIds: string[]) => Promise<boolean>;
     requestRollRange: (raidId: number, lottoId: number) => Promise<string>;
     fetchMains: () => Promise<{ [key: string]: string }>;
@@ -73,5 +93,29 @@ declare global {
   interface Raid {
     id: string;
     name: string;
+  }
+}
+
+declare module 'reactn/default' {
+  export interface Reducers {
+    append: (
+      global: State,
+      dispatch: Dispatch,
+      ...strings: any[]
+    ) => Pick<State, 'value'>;
+
+    increment: (
+      global: State,
+      dispatch: Dispatch,
+      i: number
+    ) => Pick<State, 'count'>;
+
+    doNothing: (global: State, dispatch: Dispatch) => null;
+  }
+
+  export interface State {
+    count: number;
+    value: string;
+    history: { line: string; date: string }[];
   }
 }
