@@ -51,15 +51,6 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
     setStreaming(false);
   }, [fileInfo]);
 
-  useEffect(() => {
-    if (!streaming) {
-      lines = [
-        { line: 'Select a file to parse...', date: new Date().toISOString() },
-      ];
-      setLines(lines);
-    }
-  }, [streaming]);
-
   function streamLogs() {
     if (!filePath) {
       return;
@@ -77,6 +68,7 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
       });
 
       watcher.start((line) => {
+        console.log(line);
         lines = [...lines.slice(-3), { date: new Date().toISOString(), line }];
         setLines(lines);
         if (!streaming || line === 'START') {
@@ -85,6 +77,21 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
 
         if (line === 'STOP') {
           setStreaming(false);
+          lines = [
+            {
+              line: 'Select a file to parse...',
+              date: new Date().toISOString(),
+            },
+          ];
+          setLines(lines);
+        }
+
+        if (line === 'FINAL TICK') {
+          setStreaming(false);
+          setLines([
+            ...lines,
+            { line: 'Final attendance taken', date: new Date().toISOString() },
+          ]);
         }
       });
     } catch (e) {

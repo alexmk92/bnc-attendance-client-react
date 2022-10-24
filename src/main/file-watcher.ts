@@ -340,10 +340,14 @@ const FileWatcher = function FileWatcher(
             `Recorded tick for ${this.attendees.size} players`,
             this.attendees
           );
-          this.isFinalTick = false;
           this.attendees = new Set<string>();
           lastRecordedAttendance = new Date();
           recordingAttendance = false;
+          if (this.isFinalTick) {
+            this.isFinalTick = false;
+            await this.stop();
+            cb('FINAL TICK');
+          }
         }
       }
     }
