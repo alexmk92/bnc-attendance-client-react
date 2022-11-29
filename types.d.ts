@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { Message } from 'kafkajs';
 import 'reactn';
 
 export interface BncAPI {
@@ -20,6 +21,7 @@ declare global {
     stopTail: () => Promise<void>;
     readdir: typeof fs.promises.readdir;
     baseUrl: string;
+    recordLoot: (lootLines: Message[]) => Promise<number>;
   }
 
   interface Window {
@@ -79,7 +81,6 @@ declare global {
       playerNames: string[],
       isFinalTick: boolean
     ) => Promise<boolean>;
-    recordLoot: (raidId: number, lootLines: LootLine[]) => Promise<number>;
     startLotto: (raidId: number, playerIds: string[]) => Promise<boolean>;
     requestRollRange: (raidId: number, lottoId: number) => Promise<string>;
     fetchMains: () => Promise<{ [key: string]: string }>;

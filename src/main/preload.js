@@ -3,6 +3,7 @@ const Tail = require('@logdna/tail-file');
 const split2 = require('split2');
 
 const { contextBridge, ipcRenderer } = require('electron');
+const produce = require('./producer');
 
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
@@ -53,4 +54,8 @@ contextBridge.exposeInMainWorld('ipc', {
     });
   },
   baseUrl: 'https://bnc-attendance.fly.dev',
+  recordLoot: async (messages) => {
+    await produce('loot', messages);
+    return messages.length;
+  },
 });

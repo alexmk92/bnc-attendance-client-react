@@ -1,9 +1,7 @@
 import API from './api';
 
-let lastRecordedLoot: Date | null = null;
 let lastRecordedAttendance: Date | null = null;
 let recordingAttendance = false;
-let recordingLoot = false;
 
 const MANUALLY_ASSIGNED = 'manually assigned';
 
@@ -14,9 +12,9 @@ const expressions = {
   START_RECORD_ATTENDANCE: /(Players in EverQuest:)/gi,
   END_RECORD_ATTENDANCE: /(There (are|is) ([0-9]+) player(s)? in EverQuest.)/gi,
   LOOT_LINE:
-    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `']+) from ([a-z `'-]+)( corpse)?.?/gi,
-  MANUAL_LOOT_LINE: /([a-z]+) LOOT ([a-z -'`]+)/gi,
-  LOOT_ASSIGNED: /(a|an|[0-9]+) ([a-z -'`]+) (?:was|were) given to ([a-z]+)/gi,
+    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `'-,]+) from ([a-z `'-,]+)( corpse)?.?/gi,
+  MANUAL_LOOT_LINE: /([a-z]+) LOOT ([a-z -'`,]+)/gi,
+  LOOT_ASSIGNED: /(a|an|[0-9]+) ([a-z -'`,]+) (?:was|were) given to ([a-z]+)/gi,
 };
 
 const trimChars = (src: string, c: string) => {
@@ -72,23 +70,6 @@ const diffInSeconds = (a: Date, b: Date) => {
   const diff = a.getTime() - b.getTime();
   console.log('sec diff is', diff / 1000);
   return diff / 1000;
-};
-
-const attemptToPushLootLines = async (
-  raidId: number,
-  lootLines: LootLine[],
-  cb: (res: number) => void
-) => {
-  if (
-    (!lastRecordedLoot || diffInSeconds(new Date(), lastRecordedLoot) > 10) &&
-    !recordingLoot
-  ) {
-    recordingLoot = true;
-    const res = await API.recordLoot(raidId, lootLines);
-    recordingLoot = false;
-    lastRecordedLoot = new Date();
-    cb(res);
-  }
 };
 
 const parseTimestamp = (line: string, lastParsedTimestamp: number) => {
@@ -227,20 +208,6 @@ const FileWatcher = function FileWatcher(
         this.parseAttendanceLine(cb, line);
         this.parseLootLine(cb, line);
 
-        if (this.lootLines.length > 0) {
-          attemptToPushLootLines(
-            // @ts-ignore
-            this.config.raidId,
-            this.lootLines,
-            (res: number) => {
-              cb(
-                `Pushed ${res}/${this.lootLines.length} loot lines, remaining items have not yet been looted, next batch in 10s`
-              );
-              this.lootLines = [];
-            }
-          );
-        }
-
         this.config.seekFrom = timestamp;
       }
     );
@@ -297,19 +264,27 @@ const FileWatcher = function FileWatcher(
       delete pendingLoot[pendingItemIndex];
     }
 
-    this.lootLines.push({
-      playerName: playerName.toLowerCase().trim(),
-      itemName: itemName.toLowerCase().trim(),
-      quantity,
-      lootedFrom: fmtLootedFrom,
-      wasAssigned: pendingItem?.wasAssigned || lootedFrom === MANUALLY_ASSIGNED,
-    });
+    const message = {
+      key: `${raidId}`,
+      value: JSON.stringify({
+        playerName: playerName.toLowerCase().trim(),
+        itemName: itemName.toLowerCase().trim(),
+        quantity,
+        lootedFrom: fmtLootedFrom,
+        wasAssigned:
+          pendingItem?.wasAssigned || lootedFrom === MANUALLY_ASSIGNED,
+      }),
+    };
 
-    cb(
-      `${playerName} looted ${quantity}x ${itemName} from ${fmtLootedFrom}'s corpse`
-    );
+    if (await window.ipc.recordLoot([message])) {
+      const details = JSON.parse(message.value);
+      cb(
+        `${details.playerName} looted ${details.quantity}x ${details.itemName} from ${details.lootedFrom}`
+      );
+      return true;
+    }
 
-    return true;
+    return false;
   };
 
   this.parseAttendanceLine = async (cb, line) => {

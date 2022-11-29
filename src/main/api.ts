@@ -24,24 +24,6 @@ export default {
       return {};
     }
   },
-  recordLoot: async (raidId, lootLines) => {
-    const loot = lootLines.map(
-      ({ playerName, itemName, quantity, lootedFrom, wasAssigned }) => {
-        return {
-          playerName: playerName.trim().toLowerCase(),
-          itemName: itemName.trim().toLowerCase(),
-          lootedFrom: lootedFrom?.trim().toLowerCase() || null,
-          quantity: parseInt(`${quantity}` ?? 1, 10) || 1,
-          wasAssigned: wasAssigned ? 1 : 0,
-        };
-      }
-    );
-
-    const res = await axios.post(`${BASE_URL}/raid/${raidId}/loot`, {
-      lootLines: loot,
-    });
-    return res?.data?.data?.loot_recorded || 0;
-  },
   //   startLotto: async (raidId: number, playerIds: string[]) => {
   //     return true;
   //   },
