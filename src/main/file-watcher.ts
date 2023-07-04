@@ -12,9 +12,10 @@ const expressions = {
   START_RECORD_ATTENDANCE: /(Players in EverQuest:)/gi,
   END_RECORD_ATTENDANCE: /(There (are|is) ([0-9]+) player(s)? in EverQuest.)/gi,
   LOOT_LINE:
-    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `'-,]+) from ([a-z `'-,]+)( corpse)?.?/gi,
-  MANUAL_LOOT_LINE: /([a-z]+) LOOT ([a-z -'`,]+)/gi,
-  LOOT_ASSIGNED: /(a|an|[0-9]+) ([a-z -'`,]+) (?:was|were) given to ([a-z]+)/gi,
+    /([a-z]+) (has|have) looted (a|an|[0-9]+) ([a-z `':,-]+) from ([a-z `':,-]+)( corpse)?.?/gi,
+  MANUAL_LOOT_LINE: /([a-z]+) LOOT ([a-z '`:,-]+)/gi,
+  LOOT_ASSIGNED:
+    /(a|an|[0-9]+) ([a-z '`:,-]+) (?:was|were) given to ([a-z]+)/gi,
 };
 
 const trimChars = (src: string, c: string) => {
