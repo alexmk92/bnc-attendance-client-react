@@ -3,9 +3,17 @@ const Tail = require('@logdna/tail-file');
 const split2 = require('split2');
 
 const { contextBridge, ipcRenderer } = require('electron');
-const produce = require('./producer');
 
 contextBridge.exposeInMainWorld('electron', {
+  onRollGenerated: (callback) => {
+    return ipcRenderer.on('update-current-roll', callback);
+  },
+  onRangeGenerated: (callback) => {
+    return ipcRenderer.on('update-roll-range', callback);
+  },
+  onFetchRollRange: (callback) => {
+    return ipcRenderer.on('fetching-roll-range', callback);
+  },
   ipcRenderer: {
     myPing() {
       ipcRenderer.send('ipc-example', 'ping');
@@ -24,10 +32,6 @@ contextBridge.exposeInMainWorld('electron', {
         ipcRenderer.once(channel, (event, ...args) => func(...args));
       }
     },
-  },
-  send: (channel, data) => {
-    console.log('sending', channel, data);
-    ipcRenderer.send(channel, data);
   },
 });
 
@@ -58,8 +62,32 @@ contextBridge.exposeInMainWorld('ipc', {
     });
   },
   baseUrl: 'https://bnc-attendance.fly.dev',
-  recordLoot: async (messages) => {
-    await produce('loot', messages);
-    return messages.length;
-  },
 });
+
+function refreshClickableElements() {
+  const clickableElements = document.getElementsByClassName('clickable');
+  const listeningAttr = 'listeningForMouse';
+  for (const ele of clickableElements) {
+    // If the listeners are already set up for this element, skip it.
+    if (ele.getAttribute(listeningAttr)) {
+      continue;
+    }
+    ele.addEventListener('mouseenter', () => {
+      ipcRenderer.invoke('set-ignore-mouse-events', false);
+    });
+    ele.addEventListener('mouseleave', () => {
+      ipcRenderer.invoke('set-ignore-mouse-events', true, { forward: true });
+    });
+    ele.setAttribute(listeningAttr, true);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  refreshClickableElements();
+});
+
+window.addEventListener('DOMNodeInserted', () => {
+  refreshClickableElements();
+});
+
+console.log('STSARTED THE OVERLAY');

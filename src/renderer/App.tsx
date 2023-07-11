@@ -15,7 +15,7 @@ export default function App() {
         </Switch>
       </Router>
       <span className="fixed bottom-2 right-4 text-sm text-gray-500">
-        v0.54
+        v0.55
       </span>
     </>
   );

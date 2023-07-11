@@ -27,9 +27,25 @@ export default {
   //   startLotto: async (raidId: number, playerIds: string[]) => {
   //     return true;
   //   },
-  //   requestRollRange: async (raidId: number, lottoId: number) => {
-  //     return '1-100';
-  //   },
+  requestRollRange: async (playerNames: string[]) => {
+    try {
+      const playerNameString = playerNames
+        .map((name) => name.trim().toLowerCase())
+        .join(',');
+      const res = await axios.get(
+        `${BASE_URL}/raffle/tickets?player_names=${playerNameString}`
+      );
+
+      console.log('res is', res);
+      if (res.status !== 200) {
+        throw new Error('Bad request');
+      }
+
+      return res;
+    } catch (e) {
+      return {};
+    }
+  },
   //   fetchPlayerIds: async (playerNames: string[]) => {
   //     return {};
   //   },
