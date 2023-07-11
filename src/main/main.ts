@@ -11,7 +11,7 @@
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, Tray, Menu } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -25,13 +25,72 @@ export default class AppUpdater {
   }
 }
 
+const gotTheLock = app.requestSingleInstanceLock();
+
+const RESOURCES_PATH = app.isPackaged
+  ? path.join(process.resourcesPath, 'assets')
+  : path.join(__dirname, '../../assets');
+
+const getAssetPath = (...paths: string[]): string => {
+  return path.join(RESOURCES_PATH, ...paths);
+};
+
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
+let overlayHidden = false;
+let appIcon: Tray | null = null;
+
+function buildContextMenu() {
+  return Menu.buildFromTemplate([
+    {
+      label: 'BNC Attendance',
+      click: function () {
+        mainWindow?.show();
+      },
+    },
+    {
+      label: overlayHidden ? 'Show loot tool' : 'Hide loot tool',
+      click: function () {
+        toggleOverlay();
+      },
+    },
+    {
+      label: 'Check for updates',
+      click: function () {
+        autoUpdater.checkForUpdatesAndNotify();
+      },
+    },
+    {
+      label: 'Quit',
+      click: function () {
+        // @ts-ignore
+        app.isQuiting = true;
+        app.quit();
+      },
+    },
+  ]);
+}
+
+function toggleOverlay() {
+  if (overlayHidden) {
+    overlayWindow?.show();
+    overlayHidden = false;
+  } else {
+    overlayWindow?.hide();
+    overlayHidden = true;
+  }
+
+  appIcon?.setContextMenu(buildContextMenu());
+}
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
+});
+
+ipcMain.on('app_version', (event) => {
+  event.sender.send('app_version', app.getVersion());
 });
 
 // @ts-ignore
@@ -49,6 +108,15 @@ ipcMain.on('roll-range', async (event, range) => {
   }
   console.log('got range relaying', range);
   overlayWindow.webContents.send('update-roll-range', range);
+});
+
+// @ts-ignore
+ipcMain.on('item-looted', async (event, item) => {
+  if (!overlayWindow) {
+    return;
+  }
+  console.log('got item relaying', item);
+  overlayWindow.webContents.send('item-looted', item);
 });
 
 // @ts-ignore
@@ -75,7 +143,9 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const isDevelopment =
-  process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
+  true ||
+  process.env.NODE_ENV === 'development' ||
+  process.env.DEBUG_PROD === 'true';
 
 if (isDevelopment) {
   require('electron-debug')();
@@ -95,11 +165,16 @@ const installExtensions = async () => {
 };
 
 const createOverlayWindow = async () => {
+  if (overlayWindow) {
+    overlayWindow.show();
+    overlayHidden = false;
+    return;
+  }
   overlayWindow = new BrowserWindow({
     title: 'Loot winner',
     webPreferences: {
-      // The path to our aforementioned preload script!
-      preload: path.join(__dirname, 'preloadOverlay.js'),
+      // The path to our aforementioned preload script!`
+      preload: path.join(__dirname, 'preload.js'),
     },
     // Remove the default frame around the window
     frame: false,
@@ -125,20 +200,24 @@ const createOverlayWindow = async () => {
 
   overlayWindow.setAlwaysOnTop(true, level);
   overlayWindow.loadURL(resolveHtmlPath('overlay.html'));
+
+  overlayWindow.on('ready-to-show', () => {
+    if (!overlayWindow) {
+      throw new Error('"mainWindow" is not defined');
+    }
+    overlayWindow.show();
+    overlayHidden = false;
+  });
+
+  overlayWindow.on('closed', () => {
+    overlayWindow = null;
+  });
 };
 
 const createWindow = async () => {
   if (isDevelopment) {
     await installExtensions();
   }
-
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
 
   mainWindow = new BrowserWindow({
     show: false,
@@ -160,12 +239,12 @@ const createWindow = async () => {
       mainWindow.minimize();
     } else {
       mainWindow.show();
-      overlayWindow?.show();
     }
   });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    overlayWindow?.close();
   });
 
   const menuBuilder = new MenuBuilder(mainWindow);
@@ -177,9 +256,32 @@ const createWindow = async () => {
     shell.openExternal(url);
   });
 
+  appIcon = new Tray(getAssetPath('icon.png'));
+  appIcon.setToolTip('BNC Attendance');
+  appIcon.setContextMenu(buildContextMenu());
+  appIcon.addListener('click', () => {
+    mainWindow?.show();
+  });
+
+  mainWindow.webContents.session.setCertificateVerifyProc(
+    (request, callback) => {
+      console.log(`Setting certificate proc for ${request.hostname}`);
+      // Always accept downloads.
+      callback(0);
+      // if (
+      //   ['github.com', 'objects.githubusercontent.com'].includes(
+      //     request.hostname
+      //   )
+      // ) {
+      // } else {
+      //   callback(-2);
+      // }
+    }
+  );
+
   // Remove this if your app does not use auto updates
   // eslint-disable-next-line
-  // new AppUpdater();
+  new AppUpdater();
 };
 
 /**
@@ -194,16 +296,33 @@ app.on('window-all-closed', () => {
   }
 });
 
-app
-  .whenReady()
-  .then(() => {
-    createWindow();
-    createOverlayWindow();
-    app.on('activate', () => {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      if (mainWindow === null) createWindow();
-      if (overlayWindow === null) createOverlayWindow();
-    });
-  })
-  .catch(console.log);
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on(
+    // @ts-ignore
+    'second-instance',
+    // @ts-ignore
+    (event, commandLine, workingDirectory, additionalData) => {
+      // Someone tried to run a second instance, we should focus our window.
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    }
+  );
+
+  app
+    .whenReady()
+    .then(() => {
+      createWindow();
+      createOverlayWindow();
+      app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (mainWindow === null) createWindow();
+        if (overlayWindow === null) createOverlayWindow();
+      });
+    })
+    .catch(console.log);
+}

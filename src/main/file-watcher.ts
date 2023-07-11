@@ -324,13 +324,14 @@ const FileWatcher = function FileWatcher(
 
     if (await window.ipc.recordLoot([message])) {
       const details = JSON.parse(message.value);
-      if (
-        details.playerName !== 'generating' &&
-        details.lootedFrom !== 'manually assigned'
-      ) {
+      if (details.playerName !== 'generating') {
         cb(
           `${details.playerName} looted ${details.quantity}x ${details.itemName} from ${details.lootedFrom}`
         );
+        if (details.wasAssigned) {
+          // @ts-ignore
+          window.electron.send('item-looted', JSON.stringify(details));
+        }
       }
       return true;
     }
@@ -370,10 +371,7 @@ const FileWatcher = function FileWatcher(
             this.fetchingRollRange = false;
           }
           console.log('fetched roll range');
-          return;
-        }
-
-        if (
+        } else if (
           (this.isFinalTick ||
             !lastRecordedAttendance ||
             diffInSeconds(new Date(), lastRecordedAttendance) > 10) &&

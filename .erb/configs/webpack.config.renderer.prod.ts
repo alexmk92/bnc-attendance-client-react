@@ -33,16 +33,8 @@ export default merge(baseConfig, {
   target: ['web', 'electron-renderer'],
 
   entry: {
-    index: [
-      'core-js',
-      'regenerator-runtime/runtime',
-      path.join(webpackPaths.srcRendererPath, 'index.tsx'),
-    ],
-    overlay: [
-      'core-js',
-      'regenerator-runtime/runtime',
-      path.join(webpackPaths.srcRendererPath, 'overlay.tsx'),
-    ],
+    index: path.join(webpackPaths.srcRendererPath, 'index.tsx'),
+    overlay: path.join(webpackPaths.srcRendererPath, 'overlay.tsx'),
   },
 
   output: {
@@ -143,11 +135,11 @@ export default merge(baseConfig, {
      */
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'production',
-      DEBUG_PROD: false,
+      DEBUG_PROD: true,
     }),
 
     new MiniCssExtractPlugin({
-      filename: 'style.css',
+      filename: '[name].style.css',
     }),
 
     new BundleAnalyzerPlugin({
@@ -178,7 +170,6 @@ export default merge(baseConfig, {
         removeAttributeQuotes: true,
         removeComments: true,
       },
-
       isBrowser: false,
       isDevelopment: process.env.NODE_ENV !== 'production',
     }),

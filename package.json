@@ -13,7 +13,8 @@
     "start": "ts-node ./.erb/scripts/check-port-in-use.js && npm run start:renderer",
     "start:main": "cross-env NODE_ENV=development electron -r ts-node/register/transpile-only ./src/main/main.ts",
     "start:renderer": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack serve --config ./.erb/configs/webpack.config.renderer.dev.ts",
-    "test": "jest"
+    "test": "jest",
+    "publish": "ts-node ./.erb/scripts/clean.js dist && npm run build && cross-env electron-builder build --publish always --win"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -89,13 +90,14 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "electron-react-boilerplate",
-      "repo": "electron-react-boilerplate"
+      "owner": "alexmk92",
+      "repo": "bnc-attendance-client-react",
+      "token": "github_pat_11AA3PVKA0w3bgFMnR6oNp_4Pl9U9JQSM5DzLcCKSG8c1MKhFufFUd4jjlxIu4UngdY2WG43GOJxzy750"
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/electron-react-boilerplate/electron-react-boilerplate.git"
+    "url": "git+https://github.com/alexmk92/bnc-attendance-client-react.git"
   },
   "author": {
     "name": "Electron React Boilerplate Maintainers",
@@ -116,7 +118,7 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/electron-react-boilerplate/electron-react-boilerplate/issues"
+    "url": "https://github.com/alexmk92/bnc-attendance-client-react/issues"
   },
   "keywords": [
     "electron",
@@ -129,7 +131,7 @@
     "hot",
     "reload"
   ],
-  "homepage": "https://github.com/electron-react-boilerplate/electron-react-boilerplate#readme",
+  "homepage": "https://github.com/alexmk92/bnc-attendance-client-react#readme",
   "jest": {
     "testURL": "http://localhost/",
     "testEnvironment": "jsdom",

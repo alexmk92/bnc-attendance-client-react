@@ -64,6 +64,7 @@ type RangeType = {
 setupDraggableElement();
 
 function Overlay() {
+  const [lootHistory, setLootHistory] = useState<any[]>([]);
   const [clipboardIcon, setClipboardIcon] = useState('📋');
   const [winner, setWinner] = useState('');
   const [currentRoll, setCurrentRoll] = useState(null);
@@ -91,10 +92,37 @@ function Overlay() {
     });
 
     // @ts-ignore
+    window.electron.onItemLooted((event, item) => {
+      const itemData = JSON.parse(item);
+
+      let pendingLootAllocation = lootHistory.find(
+        (lh) =>
+          lh.player.toLowerCase().trim() ===
+            item.playerName.toLowerCase().trim() && !lh.lootedItem
+      );
+
+      if (!pendingLootAllocation) {
+        pendingLootAllocation = {
+          player: item.playerName.toLowerCase().trim(),
+          roll: 'box',
+          lootedItem: itemData.itemName,
+        };
+      } else {
+        pendingLootAllocation.lootedItem = itemData.name;
+      }
+
+      const newLootHistory = [pendingLootAllocation, ...lootHistory].slice(
+        0,
+        4
+      );
+      setLootHistory(newLootHistory);
+    });
+
+    // @ts-ignore
     window.electron.onFetchRollRange(() => {
       setFetchingRange(true);
     });
-  }, [rollInvocations]);
+  }, [rollInvocations, lootHistory]);
 
   useEffect(() => {
     if (currentRoll !== null && range) {
@@ -108,9 +136,19 @@ function Overlay() {
 
       if (nextWinner) {
         setWinner(nextWinner.player.name);
+        const pendingLootAllocation = {
+          player: nextWinner.player.name.toLowerCase().trim(),
+          roll: currentRoll,
+          lootedItem: null,
+        };
+        const newLootHistory = [pendingLootAllocation, ...lootHistory].slice(
+          0,
+          4
+        );
+        setLootHistory(newLootHistory);
       }
     }
-  }, [currentRoll, range, rollInvocations, winner]);
+  }, [currentRoll, range, rollInvocations, winner, lootHistory]);
 
   const clipboard = () => {
     navigator.clipboard.writeText(range.rangeString);
@@ -239,6 +277,18 @@ function Overlay() {
           </button>
         </>
       )}
+      <ul style={{ backgroundColor: 'rgba(0, 0, 0, 0.8' }} className="p-1">
+        {lootHistory.map((lh: any, idx: number) => (
+          <li
+            className={`text-xs ${
+              lh.lootedItem ? 'text-green-500' : 'text-red-500'
+            }`}
+            key={`${lh.itemName}${lh.playerName}${idx}`}
+          >
+            {lh?.player} ({lh.roll}) {lh?.lootedItem ?? '-- pending --'}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
