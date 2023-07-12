@@ -83,6 +83,11 @@ function toggleOverlay() {
   appIcon?.setContextMenu(buildContextMenu());
 }
 
+// TODO: Make this fetch all boxes for people in zone
+async function getBoxMap() {
+  return { mave: 'karadin' };
+}
+
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
   console.log(msgTemplate(arg));
@@ -108,6 +113,14 @@ ipcMain.on('roll-range', async (event, range) => {
   }
   console.log('got range relaying', range);
   overlayWindow.webContents.send('update-roll-range', range);
+});
+
+ipcMain.on('fetch-box-map', async () => {
+  if (!overlayWindow) {
+    return;
+  }
+  const boxMap = await getBoxMap();
+  overlayWindow.webContents.send('box-map-changed', JSON.stringify(boxMap));
 });
 
 // @ts-ignore
@@ -201,12 +214,15 @@ const createOverlayWindow = async () => {
   overlayWindow.setAlwaysOnTop(true, level);
   overlayWindow.loadURL(resolveHtmlPath('overlay.html'));
 
-  overlayWindow.on('ready-to-show', () => {
+  overlayWindow.on('ready-to-show', async () => {
     if (!overlayWindow) {
       throw new Error('"mainWindow" is not defined');
     }
     overlayWindow.show();
     overlayHidden = false;
+    // TODO: Call this dynamically
+    const boxMap = await getBoxMap();
+    overlayWindow.webContents.send('box-map-changed', JSON.stringify(boxMap));
   });
 
   overlayWindow.on('closed', () => {

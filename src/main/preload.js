@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('electron', {
   onAppVersionChanged: (callback) => {
     return ipcRenderer.on('app_version', callback);
   },
+  onBoxMapChanged: (callback) => {
+    return ipcRenderer.on('box-map-changed', callback);
+  },
 });
 
 let currTail = null;

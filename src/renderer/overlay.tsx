@@ -1,5 +1,5 @@
 import 'tailwindcss/tailwind.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { render } from 'react-dom';
 
 const wrapper = document.getElementById('overlay-root');
@@ -61,10 +61,18 @@ type RangeType = {
   rangeString: string;
 };
 
+type LootAllocation = {
+  player: string;
+  lootedItem: string | null;
+  rolledAt: number;
+  roll: number | 'box';
+  lootedAt: number | null;
+};
+
 setupDraggableElement();
 
 function Overlay() {
-  const [lootHistory, setLootHistory] = useState<any[]>([]);
+  const [boxMap, setBoxMap] = useState<{ [boxName: string]: string }>({});
   const [clipboardIcon, setClipboardIcon] = useState('📋');
   const [winner, setWinner] = useState('');
   const [currentRoll, setCurrentRoll] = useState(null);
@@ -74,8 +82,15 @@ function Overlay() {
     rangeString: '',
   });
   const [rollInvocations, setRollInvocations] = useState(0);
+  const lootHistoryRef = useRef<LootAllocation[]>([]);
+  const [lootHistory, setLootHistory] = useState<LootAllocation[]>([]);
 
   useEffect(() => {
+    console.log('box map is', boxMap);
+    // @ts-ignore
+    window.electron.onBoxMapChanged((event, boxMap) => {
+      setBoxMap(JSON.parse(boxMap));
+    });
     // @ts-ignore
     window.electron.onRollGenerated((event, rollNumber) => {
       setCurrentRoll(rollNumber);
@@ -95,26 +110,32 @@ function Overlay() {
     window.electron.onItemLooted((event, item) => {
       const itemData = JSON.parse(item);
 
-      let pendingLootAllocation = lootHistory.find(
-        (lh) =>
-          lh.player.toLowerCase().trim() ===
-            item.playerName.toLowerCase().trim() && !lh.lootedItem
-      );
-
-      if (!pendingLootAllocation) {
-        pendingLootAllocation = {
-          player: item.playerName.toLowerCase().trim(),
-          roll: 'box',
-          lootedItem: itemData.itemName,
-        };
-      } else {
-        pendingLootAllocation.lootedItem = itemData.name;
+      const newLootHistory = lootHistoryRef.current;
+      let pendingLootAllocationIdx = -1;
+      console.log('box map is', boxMap);
+      if (boxMap[itemData.playerName.toLowerCase().trim()]) {
+        itemData.playerName = boxMap[itemData.playerName.toLowerCase().trim()];
       }
 
-      const newLootHistory = [pendingLootAllocation, ...lootHistory].slice(
-        0,
-        4
-      );
+      // @ts-ignore
+      for (let i = 0; i < newLootHistory.length; i++) {
+        const lh = newLootHistory[i];
+        if (
+          lh.player.toLowerCase().trim() ===
+            itemData.playerName.toLowerCase().trim() &&
+          !lh.lootedItem
+        ) {
+          pendingLootAllocationIdx = i;
+        }
+      }
+
+      if (pendingLootAllocationIdx >= 0) {
+        newLootHistory[pendingLootAllocationIdx].lootedItem = itemData.itemName;
+        newLootHistory[pendingLootAllocationIdx].lootedAt =
+          new Date().getTime();
+      }
+
+      console.log('new history', newLootHistory);
       setLootHistory(newLootHistory);
     });
 
@@ -122,7 +143,30 @@ function Overlay() {
     window.electron.onFetchRollRange(() => {
       setFetchingRange(true);
     });
-  }, [rollInvocations, lootHistory]);
+
+    return () => {
+      window.removeEventListener(
+        'update-current-roll',
+        // @ts-ignore
+        window.electron.onRollGenerated
+      );
+      window.removeEventListener(
+        'item-looted',
+        // @ts-ignore
+        window.electron.onItemLooted
+      );
+      window.removeEventListener(
+        'update-roll-range',
+        // @ts-ignore
+        window.electron.onRangeGenerated
+      );
+      window.removeEventListener(
+        'fetching-roll-range',
+        // @ts-ignore
+        window.electron.onFetchRollRange
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (currentRoll !== null && range) {
@@ -140,15 +184,23 @@ function Overlay() {
           player: nextWinner.player.name.toLowerCase().trim(),
           roll: currentRoll,
           lootedItem: null,
+          lootedAt: null,
+          rolledAt: new Date().getTime(),
         };
-        const newLootHistory = [pendingLootAllocation, ...lootHistory].slice(
-          0,
-          4
-        );
-        setLootHistory(newLootHistory);
+
+        const newHistory = [
+          pendingLootAllocation,
+          ...lootHistoryRef.current,
+        ].slice(0, 25);
+        setLootHistory(newHistory);
       }
     }
-  }, [currentRoll, range, rollInvocations, winner, lootHistory]);
+  }, [currentRoll, range, winner]);
+
+  useEffect(() => {
+    lootHistoryRef.current = lootHistory;
+    console.log('updated ref to', lootHistoryRef.current);
+  }, [lootHistory]);
 
   const clipboard = () => {
     navigator.clipboard.writeText(range.rangeString);
@@ -277,13 +329,13 @@ function Overlay() {
           </button>
         </>
       )}
-      <ul style={{ backgroundColor: 'rgba(0, 0, 0, 0.8' }} className="p-1">
-        {lootHistory.map((lh: any, idx: number) => (
+      <ul style={{ backgroundColor: 'rgba(0, 0, 0, 0.8' }} className="p-2">
+        {lootHistory.map((lh: any) => (
           <li
             className={`text-xs ${
               lh.lootedItem ? 'text-green-500' : 'text-red-500'
             }`}
-            key={`${lh.itemName}${lh.playerName}${idx}`}
+            key={`${lh.playerName}${lh.rolledAt}${lh.lootedAt}`}
           >
             {lh?.player} ({lh.roll}) {lh?.lootedItem ?? '-- pending --'}
           </li>

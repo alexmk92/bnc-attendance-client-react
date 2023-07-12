@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electron', {
   onFetchRollRange: (callback) => {
     return ipcRenderer.on('fetching-roll-range', callback);
   },
+  onBoxMapChanged: (callback) => {
+    return ipcRenderer.on('box-map-changed', callback);
+  },
   ipcRenderer: {
     myPing() {
       ipcRenderer.send('ipc-example', 'ping');
