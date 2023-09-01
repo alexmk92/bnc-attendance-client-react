@@ -50,6 +50,7 @@ declare global {
     isRecording: boolean;
     fetchingRollRange: boolean;
     isFinalTick: boolean;
+    finalTickInitiatedByMe: boolean;
     config: FileWatcherConfig;
     start: (cb: (message: string, data?: {}) => void) => Promise<boolean>;
     stop: () => Promise<void>;

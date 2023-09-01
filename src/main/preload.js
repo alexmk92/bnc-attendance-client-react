@@ -41,6 +41,9 @@ contextBridge.exposeInMainWorld('electron', {
   onItemLooted: (callback) => {
     return ipcRenderer.on('item-looted', callback);
   },
+  onItemAssigned: (callback) => {
+    return ipcRenderer.on('item-assigned', callback);
+  },
   onAppVersionChanged: (callback) => {
     return ipcRenderer.on('app_version', callback);
   },

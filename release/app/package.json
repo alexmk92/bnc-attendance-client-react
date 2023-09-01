@@ -1,7 +1,7 @@
 {
   "name": "bnc-attendance-client-react",
   "productName": "BNC Attendance",
-  "version": "v0.56",
+  "version": "0.58.1",
   "description": "Attendance client for the BNC EverQuest guild",
   "main": "./dist/main/main.js",
   "author": {

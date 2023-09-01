@@ -54,12 +54,12 @@ function buildContextMenu() {
         toggleOverlay();
       },
     },
-    {
-      label: 'Check for updates',
-      click: function () {
-        autoUpdater.checkForUpdatesAndNotify();
-      },
-    },
+    // {
+    //   label: 'Check for updates',
+    //   click: function () {
+    //     autoUpdater.checkForUpdatesAndNotify();
+    //   },
+    // },
     {
       label: 'Quit',
       click: function () {
@@ -99,11 +99,13 @@ ipcMain.on('app_version', (event) => {
 });
 
 // @ts-ignore
-ipcMain.on('fetching-roll-range', async (event, range) => {
+ipcMain.on('fetching-roll-range', async (event, isFetching) => {
   if (!overlayWindow) {
     return;
   }
-  overlayWindow.webContents.send('fetching-roll-range', true);
+
+  console.log('got fetching relaying', isFetching);
+  overlayWindow.webContents.send('fetching-roll-range', isFetching);
 });
 
 // @ts-ignore
@@ -130,6 +132,15 @@ ipcMain.on('item-looted', async (event, item) => {
   }
   console.log('got item relaying', item);
   overlayWindow.webContents.send('item-looted', item);
+});
+
+// @ts-ignore
+ipcMain.on('item-assigned', async (event, item) => {
+  if (!overlayWindow) {
+    return;
+  }
+  console.log('got item relaying', item);
+  overlayWindow.webContents.send('item-assigned', item);
 });
 
 // @ts-ignore
@@ -297,7 +308,7 @@ const createWindow = async () => {
 
   // Remove this if your app does not use auto updates
   // eslint-disable-next-line
-  new AppUpdater();
+  // new AppUpdater();
 };
 
 /**
