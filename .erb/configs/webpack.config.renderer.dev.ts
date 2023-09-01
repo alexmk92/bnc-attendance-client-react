@@ -44,18 +44,27 @@ export default merge(baseConfig, {
 
   target: ['web', 'electron-renderer'],
 
-  entry: [
-    `webpack-dev-server/client?http://localhost:${port}/dist`,
-    'webpack/hot/only-dev-server',
-    'core-js',
-    'regenerator-runtime/runtime',
-    path.join(webpackPaths.srcRendererPath, 'index.tsx'),
-  ],
+  entry: {
+    index: [
+      `webpack-dev-server/client?http://localhost:${port}/dist`,
+      'webpack/hot/only-dev-server',
+      'core-js',
+      'regenerator-runtime/runtime',
+      path.join(webpackPaths.srcRendererPath, 'index.tsx'),
+    ],
+    overlay: [
+      `webpack-dev-server/client?http://localhost:${port}/dist`,
+      'webpack/hot/only-dev-server',
+      'core-js',
+      'regenerator-runtime/runtime',
+      path.join(webpackPaths.srcRendererPath, 'overlay.tsx'),
+    ],
+  },
 
   output: {
     path: webpackPaths.distRendererPath,
     publicPath: '/',
-    filename: 'renderer.dev.js',
+    filename: '[name].renderer.dev.js',
     library: {
       type: 'umd',
     },
@@ -161,8 +170,24 @@ export default merge(baseConfig, {
     new ReactRefreshWebpackPlugin(),
 
     new HtmlWebpackPlugin({
+      chunks: ['index'],
       filename: path.join('index.html'),
       template: path.join(webpackPaths.srcRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      env: process.env.NODE_ENV,
+      isDevelopment: process.env.NODE_ENV !== 'production',
+      nodeModules: webpackPaths.appNodeModulesPath,
+    }),
+
+    new HtmlWebpackPlugin({
+      chunks: ['overlay'],
+      filename: path.join('overlay.html'),
+      template: path.join(webpackPaths.srcRendererPath, 'overlay.ejs'),
       minify: {
         collapseWhitespace: true,
         removeAttributeQuotes: true,

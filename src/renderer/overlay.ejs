@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>BNC Attendance</title>
+  </head>
+  <body>
+    <div id="overlay-root"></div>
+  </body>
+  <script>
+    window.electron.ipcRenderer.once('ipc-example', (arg) => {
+      // eslint-disable-next-line no-console
+      console.log(arg);
+    });
+
+    window.electron.ipcRenderer.myPing();
+  </script>
+</html>
+
+<style>
+  html,
+  body,
+  #overlay-root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .smooth {
+    transition: all 500ms ease-out;
+  }
+</style>

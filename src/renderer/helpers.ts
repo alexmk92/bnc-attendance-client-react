@@ -1,7 +1,13 @@
-export const prettyDate = (time: string) => {
+export const prettyDate = (time: string | number) => {
   const local = new Date();
-  const systemDate = Date.parse(time);
+  let systemDate = null;
+  if (typeof time === 'number') {
+    systemDate = time;
+  } else {
+    systemDate = Date.parse(time);
+  }
   const diff = Math.floor((local.getTime() - systemDate) / 1000);
+
   if (diff <= 1) {
     return 'just now';
   }

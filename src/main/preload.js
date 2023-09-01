@@ -25,6 +25,31 @@ contextBridge.exposeInMainWorld('electron', {
       }
     },
   },
+  send: (channel, data) => {
+    console.log('sending', channel, data);
+    ipcRenderer.send(channel, data);
+  },
+  onRollGenerated: (callback) => {
+    return ipcRenderer.on('update-current-roll', callback);
+  },
+  onRangeGenerated: (callback) => {
+    return ipcRenderer.on('update-roll-range', callback);
+  },
+  onFetchRollRange: (callback) => {
+    return ipcRenderer.on('fetching-roll-range', callback);
+  },
+  onItemLooted: (callback) => {
+    return ipcRenderer.on('item-looted', callback);
+  },
+  onItemAssigned: (callback) => {
+    return ipcRenderer.on('item-assigned', callback);
+  },
+  onAppVersionChanged: (callback) => {
+    return ipcRenderer.on('app_version', callback);
+  },
+  onBoxMapChanged: (callback) => {
+    return ipcRenderer.on('box-map-changed', callback);
+  },
 });
 
 let currTail = null;
@@ -58,4 +83,30 @@ contextBridge.exposeInMainWorld('ipc', {
     await produce('loot', messages);
     return messages.length;
   },
+});
+
+function refreshClickableElements() {
+  const clickableElements = document.getElementsByClassName('clickable');
+  const listeningAttr = 'listeningForMouse';
+  for (const ele of clickableElements) {
+    // If the listeners are already set up for this element, skip it.
+    if (ele.getAttribute(listeningAttr)) {
+      continue;
+    }
+    ele.addEventListener('mouseenter', () => {
+      ipcRenderer.invoke('set-ignore-mouse-events', false);
+    });
+    ele.addEventListener('mouseleave', () => {
+      ipcRenderer.invoke('set-ignore-mouse-events', true, { forward: true });
+    });
+    ele.setAttribute(listeningAttr, true);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  refreshClickableElements();
+});
+
+window.addEventListener('DOMNodeInserted', () => {
+  refreshClickableElements();
 });

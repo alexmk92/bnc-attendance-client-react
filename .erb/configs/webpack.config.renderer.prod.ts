@@ -32,16 +32,15 @@ export default merge(baseConfig, {
 
   target: ['web', 'electron-renderer'],
 
-  entry: [
-    'core-js',
-    'regenerator-runtime/runtime',
-    path.join(webpackPaths.srcRendererPath, 'index.tsx'),
-  ],
+  entry: {
+    index: path.join(webpackPaths.srcRendererPath, 'index.tsx'),
+    overlay: path.join(webpackPaths.srcRendererPath, 'overlay.tsx'),
+  },
 
   output: {
     path: webpackPaths.distRendererPath,
     publicPath: './',
-    filename: 'renderer.js',
+    filename: '[name].renderer.js',
     library: {
       type: 'umd',
     },
@@ -136,11 +135,11 @@ export default merge(baseConfig, {
      */
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'production',
-      DEBUG_PROD: false,
+      DEBUG_PROD: true,
     }),
 
     new MiniCssExtractPlugin({
-      filename: 'style.css',
+      filename: '[name].style.css',
     }),
 
     new BundleAnalyzerPlugin({
@@ -150,8 +149,22 @@ export default merge(baseConfig, {
     }),
 
     new HtmlWebpackPlugin({
+      chunks: ['index'],
       filename: 'index.html',
       template: path.join(webpackPaths.srcRendererPath, 'index.ejs'),
+      minify: {
+        collapseWhitespace: true,
+        removeAttributeQuotes: true,
+        removeComments: true,
+      },
+      isBrowser: false,
+      isDevelopment: process.env.NODE_ENV !== 'production',
+    }),
+
+    new HtmlWebpackPlugin({
+      chunks: ['overlay'],
+      filename: 'overlay.html',
+      template: path.join(webpackPaths.srcRendererPath, 'overlay.ejs'),
       minify: {
         collapseWhitespace: true,
         removeAttributeQuotes: true,

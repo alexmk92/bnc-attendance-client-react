@@ -48,7 +48,9 @@ declare global {
     attendees: Set<string>;
     lootLines: LootLine[];
     isRecording: boolean;
+    fetchingRollRange: boolean;
     isFinalTick: boolean;
+    finalTickInitiatedByMe: boolean;
     config: FileWatcherConfig;
     start: (cb: (message: string, data?: {}) => void) => Promise<boolean>;
     stop: () => Promise<void>;
@@ -58,6 +60,10 @@ declare global {
       line: string
     ) => Promise<void>;
     parseLootLine: (
+      cb: (message: string, data?: {}) => void,
+      line: string
+    ) => Promise<boolean>;
+    parseRollRangeLine: (
       cb: (message: string, data?: {}) => void,
       line: string
     ) => Promise<boolean>;
@@ -82,7 +88,7 @@ declare global {
       isFinalTick: boolean
     ) => Promise<boolean>;
     startLotto: (raidId: number, playerIds: string[]) => Promise<boolean>;
-    requestRollRange: (raidId: number, lottoId: number) => Promise<string>;
+    requestRollRange: (playerNames: string[]) => Promise<{}>;
     fetchMains: () => Promise<{ [key: string]: string }>;
   }
 

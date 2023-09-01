@@ -4,7 +4,7 @@ const { Kafka } = require('kafkajs');
 // the client ID lets kafka know who's producing the messages
 const clientId = 'loot-parser';
 // we can define the list of brokers in the cluster
-const brokers = [process.env.KAFKA_BROKER ?? ''];
+const brokers = ['healthy-stallion-9149-eu1-kafka.upstash.io:9092'];
 
 // initialize a new kafka client and initialize a producer from it
 const kafka = new Kafka({
@@ -13,16 +13,11 @@ const kafka = new Kafka({
   ssl: true,
   sasl: {
     mechanism: 'scram-sha-256',
-    username: process.env.KAFKA_USERNAME ?? '',
-    password: process.env.KAFKA_PASSWORD ?? '',
+    username: 'aGVhbHRoeS1zdGFsbGlvbi05MTQ5JNcSSUXErQ-MU_vaHxsWGQYUpytNdOgPRnk',
+    password:
+      '1igeUnAVMjXdz-pCnnge2GnxfMXnThXp13trVe63drfvDmtO2iPkLiMTdB6X44hntcd5XQ==',
   },
 });
-
-console.log(
-  process.env.KAFKA_BROKER,
-  process.env.KAFKA_USERNANE,
-  process.env.KAFKA_PASSWORD
-);
 
 const producer = kafka.producer();
 

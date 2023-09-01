@@ -37,6 +37,7 @@ type FileWatcherProps = RouteComponentProps<MockType, MockType, { raid: Raid }>;
 let lines: { line: string; date: string }[] = [];
 
 const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
+  // const [overlayVisible, setOverlayVisible] = useState(false);
   const [filePath, setFilePath] = useState<string>(
     localStorage.getItem('filePath') || ''
   );
@@ -48,7 +49,8 @@ const FileWatcher: FC<FileWatcherProps> = ({ history }) => {
 
   useEffect(() => {
     window.ipc.stopTail();
-    setStreaming(false);
+    // window.ipc.getWindowVisibleState();
+    // window.electron.setStreaming(false);
   }, [fileInfo]);
 
   function streamLogs() {

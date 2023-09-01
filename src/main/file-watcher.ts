@@ -16,6 +16,11 @@ const expressions = {
   MANUAL_LOOT_LINE: /([a-z]+) LOOT ([a-z '`:,-]+)/gi,
   LOOT_ASSIGNED:
     /(a|an|[0-9]+) ([a-z '`:,-]+) (?:was|were) given to ([a-z]+)/gi,
+  START_REQUEST_ROLL_RANGE: /GENERATING LOOT RANGE/gi,
+  ABORT_REQUEST_ROLL_RANGE:
+    /You cannot perform that action right now\. Please try again in a moment/gi,
+  RANDOM_ROLL_LINE:
+    /A Magic Die is rolled by ([A-Za-z]+)\. It could have been any number from ([0-9]+) to ([0-9]+), but this time it turned up a ([0-9]+)/gi,
 };
 
 const trimChars = (src: string, c: string) => {
@@ -103,6 +108,22 @@ const extractAttendanceInfo = (line: string) => {
   return matches[2];
 };
 
+const extractRollInfo = (line: string): number | false => {
+  const regExp = new RegExp(expressions.RANDOM_ROLL_LINE);
+  const matches = regExp.exec(line);
+  if (!matches) {
+    return false;
+  }
+
+  console.log('matches is ', matches);
+  const [fullLine, roller, lowerBound, upperBound, rolled] = matches;
+  if (!fullLine || !roller || (!lowerBound && !upperBound && !rolled)) {
+    return false;
+  }
+
+  return parseInt(`${rolled}`, 10);
+};
+
 const extractLootInfo = (
   line: string,
   logPlayerName: string
@@ -140,6 +161,8 @@ const FileWatcher = function FileWatcher(
   this.attendees = new Set<string>();
   this.lootLines = [];
   this.isRecording = false;
+  this.fetchingRollRange = false;
+  this.finalTickInitiatedByMe = false;
   this.isFinalTick = false;
   this.config = {
     raidId: undefined,
@@ -163,6 +186,9 @@ const FileWatcher = function FileWatcher(
   this.setRecordAttendanceState = (line: string): boolean => {
     if (line.match(expressions.RECORD_FINAL_TICK)?.length === 1) {
       this.isFinalTick = true;
+      if (line.toLowerCase().indexOf('you') > -1) {
+        this.finalTickInitiatedByMe = true;
+      }
       return true;
     }
     if (line.match(expressions.START_RECORD_ATTENDANCE)?.length === 1) {
@@ -206,6 +232,7 @@ const FileWatcher = function FileWatcher(
           return;
         }
 
+        this.parseRollRangeLine(cb, line);
         this.parseAttendanceLine(cb, line);
         this.parseLootLine(cb, line);
 
@@ -214,6 +241,38 @@ const FileWatcher = function FileWatcher(
     );
 
     return true;
+  };
+
+  // @ts-ignore
+  this.parseRollRangeLine = async (cb, rawLine) => {
+    if (
+      rawLine.match(expressions.START_REQUEST_ROLL_RANGE)?.length === 1 &&
+      !this.fetchingRollRange
+    ) {
+      this.fetchingRollRange = true;
+      // @ts-ignore
+      window.electron.send('fetching-roll-range', true);
+      cb('Starting a new loot range');
+      return true;
+    }
+
+    if (rawLine.match(expressions.ABORT_REQUEST_ROLL_RANGE)?.length === 1) {
+      this.fetchingRollRange = false;
+      // @ts-ignore
+      window.electron.send('fetching-roll-range', false);
+      cb('Error fetching roll range');
+      return false;
+    }
+
+    const rollInfo = extractRollInfo(rawLine);
+    if (rollInfo) {
+      console.log('sending roll', rollInfo);
+      // @ts-ignore
+      await window.electron.send('dice-roll', rollInfo);
+      return true;
+    }
+
+    return false;
   };
 
   this.parseLootLine = async (cb, rawLine) => {
@@ -228,6 +287,11 @@ const FileWatcher = function FileWatcher(
     );
     if (potentialPendingLootLine) {
       pendingLoot.push(potentialPendingLootLine);
+      // @ts-ignore
+      window.electron.send(
+        'item-assigned',
+        JSON.stringify(potentialPendingLootLine)
+      );
       return false;
     }
     // This could either be a line or a transformed line.
@@ -239,7 +303,12 @@ const FileWatcher = function FileWatcher(
     }
 
     const { playerName, itemName, quantity, lootedFrom } = lootInfo;
-    if (!playerName || !itemName) {
+    if (
+      !playerName ||
+      !itemName ||
+      (playerName.trim().toLowerCase() === 'generating' &&
+        itemName.trim().toLowerCase() === 'range')
+    ) {
       return false;
     }
 
@@ -279,9 +348,15 @@ const FileWatcher = function FileWatcher(
 
     if (await window.ipc.recordLoot([message])) {
       const details = JSON.parse(message.value);
-      cb(
-        `${details.playerName} looted ${details.quantity}x ${details.itemName} from ${details.lootedFrom}`
-      );
+      if (details.playerName !== 'generating') {
+        cb(
+          `${details.playerName} looted ${details.quantity}x ${details.itemName} from ${details.lootedFrom}`
+        );
+        if (details.wasAssigned) {
+          // @ts-ignore
+          window.electron.send('item-looted', JSON.stringify(details));
+        }
+      }
       return true;
     }
 
@@ -290,41 +365,69 @@ const FileWatcher = function FileWatcher(
 
   this.parseAttendanceLine = async (cb, line) => {
     const recordAttendanceIteration = this.setRecordAttendanceState(line);
-    if (recordAttendanceIteration) {
-      if (this.isRecording) {
-        // Later lets extract zone info so we can check if the player is in the raid
-        const player = extractAttendanceInfo(line);
-        if (player) {
-          this.attendees.add(player.trim().toLowerCase());
-        }
-      } else if (this.attendees.size > 0 && this.config.raidId) {
-        if (
-          (this.isFinalTick ||
-            !lastRecordedAttendance ||
-            diffInSeconds(new Date(), lastRecordedAttendance) > 10) &&
-          !recordingAttendance
-        ) {
-          recordingAttendance = true;
-          const { raidId } = this.config;
-          const { attendees, isFinalTick } = this;
-          await API.recordAttendance(
-            raidId,
-            Array.from(attendees),
-            isFinalTick
-          );
+    if (this.isFinalTick && !this.finalTickInitiatedByMe) {
+      await this.stop();
+      cb('FINAL TICK');
+      return;
+    }
+
+    if (recordAttendanceIteration && this.isRecording) {
+      // Later lets extract zone info so we can check if the player is in the raid
+      const player = extractAttendanceInfo(line);
+      if (player) {
+        this.attendees.add(player.trim().toLowerCase());
+      }
+    }
+
+    if (!this.isRecording && this.attendees.size > 0 && this.config.raidId) {
+      if (this.fetchingRollRange) {
+        try {
           cb(
-            `Recorded tick for ${this.attendees.size} players`,
-            this.attendees
+            'Requesting range for ',
+            JSON.stringify(Array.from(this.attendees))
           );
+          const rollRange = await API.requestRollRange(
+            Array.from(this.attendees)
+          );
+          // @ts-ignore
+          cb('Received roll range', rollRange.rangeString);
+          console.log('window is', window);
+
+          // @ts-ignore
+          await window.electron.send(
+            'roll-range',
+            // @ts-ignore
+            JSON.stringify(rollRange.data)
+          );
+        } catch (e) {
+          console.error('could not poll range', e);
+          // @ts-ignore
+          window.electron.send('fetching-roll-range', false);
+          cb('Error fetching roll range');
+        } finally {
           this.attendees = new Set<string>();
-          lastRecordedAttendance = new Date();
-          recordingAttendance = false;
-          if (this.isFinalTick) {
-            this.isFinalTick = false;
-            await this.stop();
-            cb('FINAL TICK');
-          }
+          this.fetchingRollRange = false;
         }
+        console.log('fetched roll range');
+      } else if (
+        (this.isFinalTick ||
+          !lastRecordedAttendance ||
+          diffInSeconds(new Date(), lastRecordedAttendance) > 10) &&
+        !recordingAttendance
+      ) {
+        const { raidId } = this.config;
+        const { attendees, isFinalTick } = this;
+        recordingAttendance = true;
+        await API.recordAttendance(raidId, Array.from(attendees), isFinalTick);
+        cb(`Recorded tick for ${attendees.size} players`, attendees);
+        lastRecordedAttendance = new Date();
+
+        if (this.isFinalTick) {
+          await this.stop();
+          cb('FINAL TICK');
+        }
+        this.attendees = new Set<string>();
+        recordingAttendance = false;
       }
     }
   };
@@ -332,6 +435,8 @@ const FileWatcher = function FileWatcher(
   this.stop = async () => {
     this.config.raidId = undefined;
     this.config.seekFrom = 0;
+    this.isFinalTick = false;
+    this.finalTickInitiatedByMe = false;
     await window.ipc.stopTail();
   };
 } as unknown as FileWatcherConstructor;
